@@ -1,0 +1,13 @@
+{
+  "libs": [
+    "ecmascript",
+    "chai"
+  ],
+  "plugins": {
+    "node": {},
+    "complete_strings": {
+      "maxLength": 60
+    },
+    "es_modules": {}
+  }
+}
