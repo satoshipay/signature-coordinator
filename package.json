@@ -6,6 +6,8 @@
     "precommit": "lint-staged",
     "start": "node build/index.js",
     "dev": "ts-node-dev -r dotenv/config .",
+    "dev:db": "docker run -e POSTGRES_DB=postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 --rm postgres:10.4-alpine",
+    "dev:db:seed": "cat migrations/*.sql | docker run --rm -i postgres:10.4-alpine psql 'postgres://postgres:postgres@host.docker.internal:5432/postgres'",
     "build": "tsc",
     "lint": "tslint --project . 'src/**/*.ts'",
     "lint:fix": "tslint --fix --project . 'src/**/*.ts'",
@@ -33,11 +35,14 @@
     "@satoshipay/koa-error-response": "^0.2.1",
     "envfefe": "^1.2.0",
     "koa": "^2.3.0",
-    "koa-router": "^7.3.0"
+    "koa-body": "^4.0.4",
+    "koa-router": "^7.3.0",
+    "pg": "^7.4.3"
   },
   "devDependencies": {
     "@types/koa": "^2.0.46",
     "@types/koa-router": "^7.0.30",
+    "@types/pg": "^7.4.10",
     "@types/supertest": "^2.0.4",
     "ava": "^0.22.0",
     "ava-ts": "^0.24.6",

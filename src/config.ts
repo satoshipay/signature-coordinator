@@ -2,10 +2,16 @@ import { parse, sanitize } from "envfefe"
 
 export type Config = ReturnType<typeof getConfig>
 
-export default function getConfig() {
+function getConfig() {
   return parse({
     basePath: {
       default: "/",
+      sanitize: sanitize.string
+    },
+    database: {
+      sanitize: sanitize.string
+    },
+    hostname: {
       sanitize: sanitize.string
     },
     port: {
@@ -14,3 +20,5 @@ export default function getConfig() {
     }
   })
 }
+
+export default getConfig()
