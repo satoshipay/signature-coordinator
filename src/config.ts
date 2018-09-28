@@ -1,4 +1,5 @@
 import { parse, sanitize } from "envfefe"
+import { Server } from "stellar-sdk"
 
 export type Config = ReturnType<typeof getConfig>
 
@@ -11,6 +12,9 @@ function getConfig() {
     database: {
       sanitize: sanitize.string
     },
+    horizon: {
+      sanitize: sanitize.string
+    },
     hostname: {
       sanitize: sanitize.string
     },
@@ -21,4 +25,8 @@ function getConfig() {
   })
 }
 
-export default getConfig()
+const config = getConfig()
+
+export default config
+
+export const horizon = new Server(config.horizon)

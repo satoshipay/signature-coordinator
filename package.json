@@ -1,6 +1,8 @@
 {
   "name": "@satoshipay/multisig-coordinator",
   "version": "0.0.0",
+  "author": "SatoshiPay",
+  "license": "UNLICENSED",
   "main": "src/index.ts",
   "scripts": {
     "precommit": "lint-staged",
@@ -12,7 +14,19 @@
     "lint": "tslint --project . 'src/**/*.ts'",
     "lint:fix": "tslint --fix --project . 'src/**/*.ts'",
     "prettier": "prettier --list-different '{src,test}/**/*.{md,ts,tsx,js,json}'",
-    "prettier:fix": "prettier --write '{src,test}/**/*.{md,ts,tsx,js,json}'"
+    "prettier:fix": "prettier --write '{src,test}/**/*.{md,ts,tsx,js,json}'",
+    "test": "ava-ts"
+  },
+  "ava": {
+    "files": [
+      "./test/*.test.ts",
+      "!./test/_helpers/*"
+    ],
+    "require": [
+      "ts-node/register",
+      "./test/_helpers/config.ts"
+    ],
+    "serial": true
   },
   "prettier": {
     "semi": false,
@@ -24,33 +38,39 @@
       "git add"
     ]
   },
-  "author": "SatoshiPay",
-  "license": "UNLICENSED",
-  "bugs": {
-    "url": "https://github.com/satoshipay/backend-boilerplate/issues"
-  },
-  "homepage": "https://github.com/satoshipay/backend-boilerplate#readme",
   "dependencies": {
     "@godaddy/terminus": "^2.4.1",
     "@satoshipay/koa-error-response": "^0.2.1",
+    "axios": "^0.18.0",
     "envfefe": "^1.2.0",
+    "http-errors": "^1.7.1",
     "koa": "^2.3.0",
     "koa-body": "^4.0.4",
     "koa-router": "^7.3.0",
-    "pg": "^7.4.3"
+    "pg": "^7.4.3",
+    "qs": "^6.5.2",
+    "stellar-sdk": "^0.11.0",
+    "uuid": "^3.3.2"
   },
   "devDependencies": {
+    "@types/dotenv": "^4.0.3",
+    "@types/get-port": "^4.0.0",
+    "@types/http-errors": "^1.6.1",
     "@types/koa": "^2.0.46",
     "@types/koa-router": "^7.0.30",
     "@types/pg": "^7.4.10",
+    "@types/qs": "^6.5.1",
+    "@types/stellar-sdk": "^0.8.6",
     "@types/supertest": "^2.0.4",
+    "@types/uuid": "^3.4.4",
     "ava": "^0.22.0",
-    "ava-ts": "^0.24.6",
+    "ava-ts": "^0.25.2",
     "dotenv": "^6.0.0",
+    "get-port": "^4.0.0",
     "husky": "^0.14.3",
     "lint-staged": "^7.2.0",
     "prettier": "^1.13.6",
-    "supertest": "^3.0.0",
+    "supertest": "^3.3.0",
     "tap-xunit": "^1.7.0",
     "ts-node": "^7.0.0",
     "ts-node-dev": "^1.0.0-pre.26",

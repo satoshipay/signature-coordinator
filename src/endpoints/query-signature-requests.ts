@@ -10,12 +10,12 @@ function respondSignatureRequest(
   accountRole: string
 ) {
   return {
-    accountRole,
-    createdAt: signatureRequest.created_at,
-    updatedAt: signatureRequest.updated_at,
-    requestURL: signatureRequest.request_url,
-    cosignerCount: signatureRequest.cosigner_count,
-    cosignatureCount: signatureRequest.cosignature_count
+    account_role: accountRole,
+    created_at: signatureRequest.created_at,
+    updated_at: signatureRequest.updated_at,
+    request_url: signatureRequest.request_url,
+    cosigner_count: signatureRequest.cosigner_count,
+    cosignature_count: signatureRequest.cosignature_count
   }
 }
 
