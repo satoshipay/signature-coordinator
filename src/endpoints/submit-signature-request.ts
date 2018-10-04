@@ -82,6 +82,7 @@ export async function handleSignatureRequestSubmission(requestURI: string) {
       id: uuid.v4(),
       designated_coordinator: true,
       request_url: requestURI,
+      signatures_base64: tx.signatures.map(signature => signature.toXDR().toString("base64")),
       source_account_id: tx.source
     })
 

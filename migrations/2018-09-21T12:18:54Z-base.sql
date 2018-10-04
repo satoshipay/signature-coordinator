@@ -4,8 +4,9 @@ CREATE TABLE signature_requests (
   updated_at TIMESTAMP DEFAULT NOW(),
   completed_at TIMESTAMP DEFAULT NULL,
   designated_coordinator BOOLEAN NOT NULL,
-  request_url VARCHAR (4095) NOT NULL,
-  source_account_id VARCHAR(56)
+  request_url TEXT NOT NULL,
+  signatures_base64 TEXT[],
+  source_account_id VARCHAR(56) NOT NULL
 );
 
 CREATE INDEX ON signature_requests(completed_at);

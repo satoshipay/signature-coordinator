@@ -19,6 +19,7 @@ export interface SignatureRequest {
   completed_at: Date | null
   designated_coordinator: boolean
   request_url: string
+  signatures_base64: string[]
   source_account_id: string
 }
 

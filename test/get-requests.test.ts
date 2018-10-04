@@ -13,6 +13,7 @@ async function seed(database: Pool) {
       designated_coordinator: true,
       request_url:
         "web+stellar:tx?xdr=AAAAAL6Qe0ushP7lzogR2y3vyb8LKiorvD1U2KIlfs1wRBliAAAAZAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAABEz4bSpWmsmrXcIVAkY2hM3VdeCBJse56M18LaGzHQUAAAAAAAAAAACadvgAAAAAAAAAAA",
+      signatures_base64: [],
       source_account_id: "GC7JA62LVSCP5ZOORAI5WLPPZG7QWKRKFO6D2VGYUISX5TLQIQMWEIY3"
     },
     {
@@ -20,6 +21,7 @@ async function seed(database: Pool) {
       designated_coordinator: true,
       request_url:
         "web+stellar:tx?xdr=AAAAAP+yw+ZEuNg533pUmwlYxfrq6/BoMJqiJ8vuQhf6rHWmAAAAZAB8NHAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAA/7LD5kS42DnfelSbCVjF+urr8GgwmqIny+5CF/qsdaYAAAAAAAAAAACYloAAAAAAAAAAAA",
+      signatures_base64: [],
       source_account_id: "GD73FQ7GIS4NQOO7PJKJWCKYYX5OV27QNAYJVIRHZPXEEF72VR22MLXU"
     }
   ]
