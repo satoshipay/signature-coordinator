@@ -17,10 +17,12 @@ export default function createRouter(config: Config) {
 
   router.prefix(config.basePath)
 
-  router.get("/requests/:accountID", async ({ params, response }) => {
+  router.get("/requests/:accountID", async ({ params, query, response }) => {
     const { accountID } = params
+    const offset = query.cursor ? Number.parseInt(query.cursor, 10) : undefined
+    const limit = query.limit ? Number.parseInt(query.limit, 10) : undefined
 
-    response.body = await querySignatureRequests(accountID)
+    response.body = await querySignatureRequests(accountID, { offset, limit })
   })
 
   router.post("/submit", async ({ request, response }) => {

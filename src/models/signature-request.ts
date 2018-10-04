@@ -32,6 +32,11 @@ export type SignatureRequestWithCosignerCounts = SignatureRequest & {
   signature_count: number
 }
 
+interface QueryOptions {
+  offset?: number
+  limit?: number
+}
+
 export async function createSignatureRequest(
   client: DBClient,
   signatureRequest: NewSignatureRequest
@@ -54,7 +59,11 @@ export async function createSignatureRequest(
   return rows[0] as SignatureRequest
 }
 
-export async function querySignatureRequestsBySource(client: DBClient, sourceAccountID: string) {
+export async function querySignatureRequestsBySource(
+  client: DBClient,
+  sourceAccountID: string,
+  queryOptions: QueryOptions = {}
+) {
   const { rows } = await client.query(
     `
       SELECT
@@ -75,15 +84,19 @@ export async function querySignatureRequestsBySource(client: DBClient, sourceAcc
       WHERE
         source_account_id = $1
         AND completed_at IS NULL
+      ORDER BY created_at ASC
+      OFFSET $2
+      LIMIT $3
     `,
-    [sourceAccountID]
+    [sourceAccountID, queryOptions.offset || 0, queryOptions.limit || 100]
   )
   return rows as SignatureRequestWithCosignerCounts[]
 }
 
 export async function querySignatureRequestsByCosigner(
   client: DBClient,
-  cosignerAccountID: string
+  cosignerAccountID: string,
+  queryOptions: QueryOptions = {}
 ) {
   const { rows } = await client.query(
     `
@@ -108,8 +121,11 @@ export async function querySignatureRequestsByCosigner(
         signers.account_id = $1
         AND signature_requests.source_account_id != $1
         AND completed_at IS NULL
+      ORDER BY signature_requests.created_at ASC
+      OFFSET $2
+      LIMIT $3
     `,
-    [cosignerAccountID]
+    [cosignerAccountID, queryOptions.offset || 0, queryOptions.limit || 100]
   )
   return rows as SignatureRequestWithCosignerCounts[]
 }

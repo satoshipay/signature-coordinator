@@ -19,10 +19,15 @@ function respondSignatureRequest(
   }
 }
 
-export async function querySignatureRequests(accountID: string) {
+interface QueryOptions {
+  offset?: number
+  limit?: number
+}
+
+export async function querySignatureRequests(accountID: string, queryOptions: QueryOptions = {}) {
   const [originatingRequests, cosignatureRequests] = await Promise.all([
-    querySignatureRequestsBySource(database, accountID),
-    querySignatureRequestsByCosigner(database, accountID)
+    querySignatureRequestsBySource(database, accountID, queryOptions),
+    querySignatureRequestsByCosigner(database, accountID, queryOptions)
   ])
 
   return [
