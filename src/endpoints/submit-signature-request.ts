@@ -11,7 +11,7 @@ import {
   hasSufficientSignatures,
   signatureMatchesPublicKey
 } from "../lib/stellar"
-import { saveCosigner } from "../models/cosigner"
+import { saveSigner } from "../models/signer"
 import { createSignatureRequest, TxParameters } from "../models/signature-request"
 
 function parseTransactionXDR(base64XDR: string) {
@@ -35,7 +35,7 @@ function parseRequestURL(requestURI: string) {
     throw createError(400, "Expected request to start with 'web+stellar:'")
   }
 
-  const [operation, queryString] = requestURI.replace(/^web+stellar:/, "").split("?", 1)
+  const [operation, queryString] = requestURI.replace(/^web\+stellar:/, "").split("?", 2)
   const parameters = qs.parse(queryString)
 
   if (operation !== "tx") {
@@ -90,9 +90,9 @@ export async function handleSignatureRequestSubmission(requestURI: string) {
         const hasSigned = tx.signatures.some(signature =>
           signatureMatchesPublicKey(signature, signerPublicKey)
         )
-        await saveCosigner(client, {
+        await saveSigner(client, {
           signature_request: signatureRequest.id,
-          cosigner_account_id: signerPublicKey,
+          account_id: signerPublicKey,
           has_signed: hasSigned
         })
       })

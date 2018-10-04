@@ -28,8 +28,8 @@ export type NewSignatureRequest = Omit<
 >
 
 export type SignatureRequestWithCosignerCounts = SignatureRequest & {
-  cosigner_count: number
-  cosignature_count: number
+  signer_count: number
+  signature_count: number
 }
 
 export async function createSignatureRequest(
@@ -60,16 +60,16 @@ export async function querySignatureRequestsBySource(client: DBClient, sourceAcc
       SELECT
         *,
         (
-          SELECT count(cosigner_account_id)::INT
-          FROM cosigners
+          SELECT count(account_id)::INT
+          FROM signers
           WHERE signature_request = signature_requests.id
-        ) AS cosigner_count,
+        ) AS signer_count,
         (
-          SELECT count(cosigner_account_id)::INT
-          FROM cosigners
+          SELECT count(account_id)::INT
+          FROM signers
           WHERE signature_request = signature_requests.id
           AND has_signed = true
-        ) AS cosignature_count
+        ) AS signature_count
       FROM
         signature_requests
       WHERE
@@ -90,22 +90,23 @@ export async function querySignatureRequestsByCosigner(
       SELECT
         signature_requests.*,
         (
-          SELECT count(cosigner_account_id)::INT
-          FROM cosigners
+          SELECT count(account_id)::INT
+          FROM signers
           WHERE signature_request = signature_requests.id
-        ) AS cosigner_count,
+        ) AS signer_count,
         (
-          SELECT count(cosigner_account_id)::INT
-          FROM cosigners
+          SELECT count(account_id)::INT
+          FROM signers
           WHERE signature_request = signature_requests.id
           AND has_signed = true
-        ) AS cosignature_count
+        ) AS signature_count
       FROM
         signature_requests
-      LEFT JOIN cosigners
-        ON signature_requests.id = cosigners.signature_request
+      LEFT JOIN signers
+        ON signature_requests.id = signers.signature_request
       WHERE
-        cosigners.cosigner_account_id = $1
+        signers.account_id = $1
+        AND signature_requests.source_account_id != $1
         AND completed_at IS NULL
     `,
     [cosignerAccountID]

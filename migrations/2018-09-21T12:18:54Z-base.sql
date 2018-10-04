@@ -11,12 +11,12 @@ CREATE TABLE signature_requests (
 CREATE INDEX ON signature_requests(completed_at);
 CREATE INDEX ON signature_requests(source_account_id);
 
-CREATE TABLE cosigners (
+CREATE TABLE signers (
   signature_request UUID REFERENCES signature_requests(id) ON DELETE CASCADE NOT NULL,
-  cosigner_account_id VARCHAR(56) NOT NULL,
+  account_id VARCHAR(56) NOT NULL,
   has_signed BOOLEAN NOT NULL,
-  PRIMARY KEY (signature_request, cosigner_account_id)
+  PRIMARY KEY (signature_request, account_id)
 );
 
-CREATE INDEX ON cosigners(cosigner_account_id);
-CREATE INDEX ON cosigners(has_signed);
+CREATE INDEX ON signers(account_id);
+CREATE INDEX ON signers(has_signed);

@@ -30,7 +30,11 @@ export async function withApp(callback: (app: App) => Promise<any>) {
   await prepareDatabase(database)
 
   const app = createApp(testingConfig)
-  const server = app.listen(testingConfig.port, testingConfig.hostname)
+  const server = await new Promise<Server>(resolve => {
+    const serverInstance = app.listen(testingConfig.port, "127.0.0.1", () =>
+      resolve(serverInstance)
+    )
+  })
 
   try {
     return await callback({
