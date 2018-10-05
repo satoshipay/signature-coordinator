@@ -3,6 +3,7 @@ import { Transaction } from "stellar-sdk"
 
 import { horizon } from "../config"
 import { database, transaction } from "../database"
+import { notifySignatureRequestSubmitted, notifySignatureRequestUpdated } from "../notifications"
 import { patchSignatureRequestURIParameters } from "../lib/sep-0007"
 import {
   collateTransactionSignatures,
@@ -72,18 +73,31 @@ export async function collateSignatures(signatureRequestID: string, txXDR: strin
   )
   const collatedTx = collateTransactionSignatures(inputTx, updatedSignaturesBase64)
 
-  const [sourceAccount, allSignerAccountIDs] = await Promise.all([
+  const [sourceAccount, allSigners] = await Promise.all([
     horizon.loadAccount(collatedTx.source),
     queryAllSignatureRequestSigners(database, signatureRequestID)
   ])
 
-  await updateSignatureRequest(signatureRequest, collatedTx, allSignerAccountIDs)
+  await updateSignatureRequest(
+    signatureRequest,
+    collatedTx,
+    allSigners.map(signer => signer.account_id)
+  )
+  const signers = await queryAllSignatureRequestSigners(database, signatureRequestID)
 
-  // TODO: NOTIFY
+  await notifySignatureRequestUpdated({
+    signatureRequest,
+    signers
+  })
 
   if (hasSufficientSignatures(sourceAccount, collatedTx.signatures)) {
     const submissionResponse = await submitToHorizon(collatedTx)
     await markSignatureRequestAsCompleted(database, signatureRequestID)
+
+    await notifySignatureRequestSubmitted({
+      signatureRequest,
+      signers
+    })
 
     return {
       collatedTx,

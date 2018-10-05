@@ -1,9 +1,27 @@
 import { Pool, PoolClient } from "pg"
+import createPostgresSubscriber from "pg-listen"
 import config from "./config"
 
 export type DBClient = Pool | PoolClient
 
 export const database = new Pool({ connectionString: config.database })
+
+export const notificationsSubscription = createPostgresSubscriber({
+  connectionString: config.database
+})
+
+notificationsSubscription.events.on("error", (error: Error) => {
+  console.error("Fatal postgres notification subscription error:", error)
+  process.exit(1)
+})
+
+export async function connectToDatabase() {
+  try {
+    await Promise.all([database.connect(), notificationsSubscription.connect()])
+  } catch (error) {
+    throw new Error(`Cannot connect to database ${config.database}: ${error.message}`)
+  }
+}
 
 /**
  * @example

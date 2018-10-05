@@ -5,6 +5,7 @@ import URL from "url"
 
 import { createSignatureRequestURI } from "../src/lib/sep-0007"
 import { withApp } from "./_helpers/bootstrap"
+import { recordEventStream } from "./_helpers/event-stream"
 import { cosignSignatureRequest, createTransaction, horizon, topup } from "./_helpers/transactions"
 
 const multisigAccountKeypair = Keypair.random()
@@ -35,7 +36,7 @@ test.before(async () => {
 })
 
 test("can submit a co-signature request", async t =>
-  withApp(async ({ server }) => {
+  withApp(async ({ config, server }) => {
     const tx = await createTransaction(multisigAccountKeypair, [
       Operation.createAccount({
         destination: someOtherKeypair.publicKey(),
@@ -43,6 +44,10 @@ test("can submit a co-signature request", async t =>
       })
     ])
 
+    const eventStreamRecording = recordEventStream(
+      `http://localhost:${config.port}/stream/${multisigAccountKeypair.publicKey()}`,
+      ["signature-request"]
+    )
     const urlFormattedRequest = createSignatureRequestURI(tx)
 
     await request(server)
@@ -74,10 +79,19 @@ test("can submit a co-signature request", async t =>
     t.is(sourceResponse.body.length, 1, "Expected one signature request for the source public key.")
     t.is(sourceResponse.body[0].account_role, "source")
     t.true(sourceResponse.body[0].request_uri.startsWith(urlFormattedRequest + "&callback="))
+
+    const streamedEvents = eventStreamRecording.stop()
+    t.is(streamedEvents.length, 1, "Expected one streamed event to be recorded.")
+
+    t.true(
+      streamedEvents[0].data.signatureRequest &&
+        typeof streamedEvents[0].data.signatureRequest === "object"
+    )
+    t.true(streamedEvents[0].data.signers && Array.isArray(streamedEvents[0].data.signers))
   }))
 
 test("can submit a co-sig request and collate a 2nd signature", async t =>
-  withApp(async ({ server }) => {
+  withApp(async ({ config, server }) => {
     const tx = await createTransaction(multisigAccountKeypair, [
       Operation.createAccount({
         destination: someOtherKeypair.publicKey(),
@@ -85,6 +99,10 @@ test("can submit a co-sig request and collate a 2nd signature", async t =>
       })
     ])
 
+    const eventStreamRecording = recordEventStream(
+      `http://localhost:${config.port}/stream/${cosignerKeypair.publicKey()}`,
+      ["signature-request:submitted"]
+    )
     const urlFormattedRequest = createSignatureRequestURI(tx)
 
     await request(server)
@@ -137,5 +155,14 @@ test("can submit a co-sig request and collate a 2nd signature", async t =>
       0,
       "Expected no signature request to be returned for cosigner public key after submission.\nResponse: " +
         JSON.stringify(cosignerQueryResponseAfter.body, null, 2)
+    )
+
+    const streamedEvents = eventStreamRecording.stop()
+    t.is(streamedEvents.length, 1)
+
+    t.truthy(streamedEvents[0].data.signatureRequest)
+    t.is(
+      streamedEvents[0].data.signatureRequest.source_account_id,
+      multisigAccountKeypair.publicKey()
     )
   }))

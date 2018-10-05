@@ -1,6 +1,6 @@
 import { DBClient } from "../database"
 
-interface Signer {
+export interface Signer {
   signature_request: string
   account_id: string
   has_signed: boolean
@@ -42,9 +42,8 @@ export async function queryAllSignatureRequestSigners(
   client: DBClient,
   signatureRequestID: string
 ) {
-  const { rows } = await client.query(
-    "SELECT account_id FROM signers WHERE signature_request = $1",
-    [signatureRequestID]
-  )
-  return rows.map(row => row.account_id as string)
+  const { rows } = await client.query("SELECT * FROM signers WHERE signature_request = $1", [
+    signatureRequestID
+  ])
+  return rows as Signer[]
 }

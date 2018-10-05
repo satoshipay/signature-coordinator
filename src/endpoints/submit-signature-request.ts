@@ -5,13 +5,14 @@ import uuid from "uuid"
 
 import { horizon } from "../config"
 import { transaction } from "../database"
+import { notifyNewSignatureRequest } from "../notifications"
 import {
   getAllSigners,
   getAllSources,
   hasSufficientSignatures,
   signatureMatchesPublicKey
 } from "../lib/stellar"
-import { saveSigner } from "../models/signer"
+import { saveSigner, Signer } from "../models/signer"
 import { createSignatureRequest, TxParameters } from "../models/signature-request"
 
 function parseTransactionXDR(base64XDR: string) {
@@ -77,7 +78,7 @@ export async function handleSignatureRequestSubmission(requestURI: string) {
     throw createError(400, "Transaction is already sufficiently signed.")
   }
 
-  const signatureRequest = await transaction(async client => {
+  const { signatureRequest, signers } = await transaction(async client => {
     const sigRequest = await createSignatureRequest(client, {
       id: uuid.v4(),
       designated_coordinator: true,
@@ -85,23 +86,33 @@ export async function handleSignatureRequestSubmission(requestURI: string) {
       source_account_id: tx.source
     })
 
+    const signers: Signer[] = requiredSigners.map(signerPublicKey => {
+      const hasSigned = tx.signatures.some(signature =>
+        signatureMatchesPublicKey(signature, signerPublicKey)
+      )
+      return {
+        signature_request: sigRequest.id,
+        account_id: signerPublicKey,
+        has_signed: hasSigned
+      }
+    })
+
     await Promise.all(
-      requiredSigners.map(async signerPublicKey => {
-        const hasSigned = tx.signatures.some(signature =>
-          signatureMatchesPublicKey(signature, signerPublicKey)
-        )
-        await saveSigner(client, {
-          signature_request: sigRequest.id,
-          account_id: signerPublicKey,
-          has_signed: hasSigned
-        })
+      signers.map(async signer => {
+        await saveSigner(client, signer)
       })
     )
 
-    return sigRequest
+    return {
+      signatureRequest: sigRequest,
+      signers
+    }
   })
 
-  // TODO: NOTIFY
+  await notifyNewSignatureRequest({
+    signatureRequest,
+    signers
+  })
 
   return {
     id: signatureRequest.id

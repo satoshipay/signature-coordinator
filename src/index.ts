@@ -2,21 +2,15 @@ import terminus from "@godaddy/terminus"
 
 import createApp from "./app"
 import config from "./config"
-import { database } from "./database"
+import { connectToDatabase } from "./database"
 import { selectStellarNetwork } from "./lib/stellar"
-
-async function checkDatabaseConnection() {
-  try {
-    await database.connect()
-  } catch (error) {
-    throw new Error(`Cannot connect to database ${config.database}: ${error.message}`)
-  }
-}
+import { subscribeToChannels } from "./notifications"
 
 async function launch() {
-  await checkDatabaseConnection()
+  await connectToDatabase()
   await selectStellarNetwork(config.horizon)
 
+  subscribeToChannels()
   const app = createApp(config)
 
   const server = app.listen(config.port, function(error?: Error) {

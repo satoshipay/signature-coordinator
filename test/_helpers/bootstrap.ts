@@ -5,17 +5,22 @@ import { Pool } from "pg"
 
 import createApp from "../../src/app"
 import config, { Config } from "../../src/config"
-import { database } from "../../src/database"
+import { connectToDatabase, database } from "../../src/database"
 import { selectStellarNetwork } from "../../src/lib/stellar"
+import { subscribeToChannels } from "../../src/notifications"
 import { prepareDatabase } from "./database"
 
 interface App {
+  config: Config
   database: Pool
   server: Server
 }
 
 test.before(async () => {
+  await connectToDatabase()
   await selectStellarNetwork(config.horizon)
+
+  subscribeToChannels()
 })
 
 export async function withApp(callback: (app: App) => Promise<any>) {
@@ -26,7 +31,6 @@ export async function withApp(callback: (app: App) => Promise<any>) {
     port
   }
 
-  await database.connect()
   await prepareDatabase(database)
 
   const app = createApp(testingConfig)
@@ -38,6 +42,7 @@ export async function withApp(callback: (app: App) => Promise<any>) {
 
   try {
     return await callback({
+      config: testingConfig,
       database,
       server
     })

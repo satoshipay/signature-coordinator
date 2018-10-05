@@ -1,10 +1,12 @@
 import createError from "http-errors"
+import { createEventStream } from "http-event-stream"
 import BodyParser from "koa-body"
 import Router from "koa-router"
 
 import { Config } from "./config"
 import { collateSignatures } from "./endpoints/collate-signatures"
 import { querySignatureRequests } from "./endpoints/query-signature-requests"
+import { streamSignatureRequests } from "./endpoints/stream-signature-requests"
 import { handleSignatureRequestSubmission } from "./endpoints/submit-signature-request"
 import { patchSignatureRequestURIParameters } from "./lib/sep-0007"
 
@@ -65,6 +67,16 @@ export default function createRouter(config: Config) {
     const { xdr } = request.body
 
     response.body = await collateSignatures(signatureRequestID, xdr)
+  })
+
+  router.get("/stream/:accountIDs", async context => {
+    const accountIDs = context.params.accountIDs.split(",") as string[]
+    const eventStream = createEventStream(context.res)
+
+    streamSignatureRequests(eventStream, accountIDs, context.request.get("Last-Event-ID"))
+
+    // Don't close the request/stream after handling the route!
+    context.respond = false
   })
 
   router.get("/status/live", ctx => {

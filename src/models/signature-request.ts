@@ -14,8 +14,8 @@ export interface TxParameters {
 
 export interface SignatureRequest {
   id: string
-  created_at: Date
-  updated_at: Date
+  created_at: string
+  updated_at: string
   completed_at: Date | null
   designated_coordinator: boolean
   request_uri: string
@@ -67,7 +67,7 @@ export async function updateSignatureRequestURI(
   const { rowCount } = await client.query(
     `
     UPDATE signature_requests
-    SET request_uri = $2
+    SET request_uri = $2, updated_at = NOW()
     WHERE id = $1
   `,
     [id, signatureRequestURI]
@@ -82,7 +82,7 @@ export async function markSignatureRequestAsCompleted(client: DBClient, id: stri
   const { rowCount } = await client.query(
     `
     UPDATE signature_requests
-    SET completed_at = NOW()
+    SET completed_at = NOW(), updated_at = NOW()
     WHERE id = $1
   `,
     [id]
