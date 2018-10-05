@@ -30,10 +30,10 @@ export default function createRouter(config: Config) {
 
   router.get("/requests/:accountID", async ({ params, query, response }) => {
     const { accountID } = params
-    const offset = query.cursor ? Number.parseInt(query.cursor, 10) : undefined
+    const cursor = query.cursor ? Number.parseInt(query.cursor, 10) : undefined
     const limit = query.limit ? Number.parseInt(query.limit, 10) : undefined
 
-    const requests = await querySignatureRequests(accountID, { offset, limit })
+    const requests = await querySignatureRequests(accountID, { cursor, limit })
 
     const preparedRequests = requests.map(request => {
       const collateURL = createHRef(`/signatures/collate/${request.id}`)

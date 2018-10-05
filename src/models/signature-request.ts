@@ -33,7 +33,7 @@ export type SignatureRequestWithCosignerCounts = SignatureRequest & {
 }
 
 interface QueryOptions {
-  offset?: number
+  cursor?: number
   limit?: number
 }
 
@@ -127,12 +127,12 @@ export async function querySignatureRequestsBySource(
         signature_requests
       WHERE
         source_account_id = $1
+        AND created_at > $2
         AND completed_at IS NULL
       ORDER BY created_at ASC
-      OFFSET $2
       LIMIT $3
     `,
-    [sourceAccountID, queryOptions.offset || 0, queryOptions.limit || 100]
+    [sourceAccountID, new Date(queryOptions.cursor || 0), queryOptions.limit || 100]
   )
   return rows as SignatureRequestWithCosignerCounts[]
 }
@@ -164,12 +164,12 @@ export async function querySignatureRequestsByCosigner(
       WHERE
         signers.account_id = $1
         AND signature_requests.source_account_id != $1
+        AND created_at > $2
         AND completed_at IS NULL
       ORDER BY signature_requests.created_at ASC
-      OFFSET $2
       LIMIT $3
     `,
-    [cosignerAccountID, queryOptions.offset || 0, queryOptions.limit || 100]
+    [cosignerAccountID, new Date(queryOptions.cursor || 0), queryOptions.limit || 100]
   )
   return rows as SignatureRequestWithCosignerCounts[]
 }

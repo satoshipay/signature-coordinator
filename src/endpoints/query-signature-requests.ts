@@ -21,7 +21,7 @@ function respondSignatureRequest(
 }
 
 interface QueryOptions {
-  offset?: number
+  cursor?: number
   limit?: number
 }
 
