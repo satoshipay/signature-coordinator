@@ -63,6 +63,8 @@ export function hasSufficientSignatures(
   signatures: xdr.DecoratedSignature[],
   threshold: number = account.thresholds.high_threshold
 ) {
+  // FIXME: Select correct threshold
+
   const effectiveSignatureWeights = account.signers
     .filter(signer =>
       signatures.some(signature => signatureMatchesPublicKey(signature, signer.public_key))
@@ -70,4 +72,29 @@ export function hasSufficientSignatures(
     .map(signer => signer.weight)
 
   return sum(effectiveSignatureWeights) >= threshold
+}
+
+export function collateTransactionSignatures(
+  tx: Transaction,
+  additionalSignaturesBase64: string[]
+) {
+  const collatedTx = new Transaction(
+    tx
+      .toEnvelope()
+      .toXDR()
+      .toString("base64")
+  )
+
+  const prevSignaturesBase64 = tx.signatures.map(signature => signature.toXDR().toString("base64"))
+  const newSignaturesBase64 = additionalSignaturesBase64.filter(
+    signatureBase64 => !prevSignaturesBase64.includes(signatureBase64)
+  )
+
+  for (const signatureBase64 of newSignaturesBase64) {
+    const signatureBuffer = Buffer.from(signatureBase64, "base64")
+    const decoratedSignature = (xdr.DecoratedSignature as any).fromXDR(signatureBuffer)
+    collatedTx.signatures.push(decoratedSignature)
+  }
+
+  return collatedTx
 }

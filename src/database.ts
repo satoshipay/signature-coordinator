@@ -14,7 +14,6 @@ export const database = new Pool({ connectionString: config.database })
  * ```
  */
 async function allocateClient<ReturnType>(
-  database: Pool,
   callback: (dbClient: PoolClient) => Promise<ReturnType>
 ): Promise<ReturnType> {
   const dbClient = await database.connect()
@@ -35,10 +34,9 @@ async function allocateClient<ReturnType>(
  * ```
  */
 export async function transaction<ReturnType>(
-  database: Pool,
   callback: (dbClient: PoolClient) => Promise<ReturnType>
 ): Promise<ReturnType> {
-  return allocateClient(database, async dbClient => {
+  return allocateClient(async dbClient => {
     try {
       await dbClient.query("BEGIN")
       const result = await callback(dbClient)

@@ -22,7 +22,7 @@ export async function withApp(callback: (app: App) => Promise<any>) {
   const port = await getPort()
   const testingConfig: Config = {
     ...config,
-    hostname: `127.0.0.1:${port}`,
+    baseUrl: `http://localhost:${port}`,
     port
   }
 

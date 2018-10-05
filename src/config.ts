@@ -5,7 +5,7 @@ export type Config = ReturnType<typeof getConfig>
 
 function getConfig() {
   return parse({
-    basePath: {
+    baseUrl: {
       default: "/",
       sanitize: sanitize.string
     },
@@ -13,9 +13,6 @@ function getConfig() {
       sanitize: sanitize.string
     },
     horizon: {
-      sanitize: sanitize.string
-    },
-    hostname: {
       sanitize: sanitize.string
     },
     port: {

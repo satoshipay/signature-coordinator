@@ -18,8 +18,7 @@ export interface SignatureRequest {
   updated_at: Date
   completed_at: Date | null
   designated_coordinator: boolean
-  request_url: string
-  signatures_base64: string[]
+  request_uri: string
   source_account_id: string
 }
 
@@ -46,18 +45,62 @@ export async function createSignatureRequest(
     `
     INSERT INTO
       signature_requests
-    (id, designated_coordinator, request_url, source_account_id)
+    (id, designated_coordinator, request_uri, source_account_id)
     VALUES ($1, $2, $3, $4)
     RETURNING *
   `,
     [
       signatureRequest.id,
       signatureRequest.designated_coordinator,
-      signatureRequest.request_url,
+      signatureRequest.request_uri,
       signatureRequest.source_account_id
     ]
   )
   return rows[0] as SignatureRequest
+}
+
+export async function updateSignatureRequestURI(
+  client: DBClient,
+  id: string,
+  signatureRequestURI: string
+) {
+  const { rowCount } = await client.query(
+    `
+    UPDATE signature_requests
+    SET request_uri = $2
+    WHERE id = $1
+  `,
+    [id, signatureRequestURI]
+  )
+
+  if (rowCount !== 1) {
+    throw new Error(`Signature request could not be updated, probably not found: ${id}`)
+  }
+}
+
+export async function markSignatureRequestAsCompleted(client: DBClient, id: string) {
+  const { rowCount } = await client.query(
+    `
+    UPDATE signature_requests
+    SET completed_at = NOW()
+    WHERE id = $1
+  `,
+    [id]
+  )
+
+  if (rowCount !== 1) {
+    throw new Error(`Signature request could not be marked as completed, probably not found: ${id}`)
+  }
+}
+
+export async function querySignatureRequestByID(client: DBClient, id: string) {
+  const { rows } = await client.query(
+    `
+    SELECT * FROM signature_requests WHERE id = $1
+  `,
+    [id]
+  )
+  return rows.length > 0 ? (rows[0] as SignatureRequest) : null
 }
 
 export async function querySignatureRequestsBySource(

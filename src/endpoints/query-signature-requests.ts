@@ -11,9 +11,10 @@ function respondSignatureRequest(
 ) {
   return {
     account_role: accountRole,
+    id: signatureRequest.id,
     created_at: signatureRequest.created_at,
     updated_at: signatureRequest.updated_at,
-    request_url: signatureRequest.request_url,
+    request_uri: signatureRequest.request_uri,
     signer_count: signatureRequest.signer_count,
     signature_count: signatureRequest.signature_count
   }

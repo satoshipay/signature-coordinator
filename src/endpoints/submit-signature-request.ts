@@ -4,7 +4,7 @@ import { Transaction } from "stellar-sdk"
 import uuid from "uuid"
 
 import { horizon } from "../config"
-import { database, transaction } from "../database"
+import { transaction } from "../database"
 import {
   getAllSigners,
   getAllSources,
@@ -77,12 +77,11 @@ export async function handleSignatureRequestSubmission(requestURI: string) {
     throw createError(400, "Transaction is already sufficiently signed.")
   }
 
-  const signatureRequest = await transaction(database, async client => {
-    const signatureRequest = await createSignatureRequest(client, {
+  const signatureRequest = await transaction(async client => {
+    const sigRequest = await createSignatureRequest(client, {
       id: uuid.v4(),
       designated_coordinator: true,
-      request_url: requestURI,
-      signatures_base64: tx.signatures.map(signature => signature.toXDR().toString("base64")),
+      request_uri: requestURI,
       source_account_id: tx.source
     })
 
@@ -92,14 +91,14 @@ export async function handleSignatureRequestSubmission(requestURI: string) {
           signatureMatchesPublicKey(signature, signerPublicKey)
         )
         await saveSigner(client, {
-          signature_request: signatureRequest.id,
+          signature_request: sigRequest.id,
           account_id: signerPublicKey,
           has_signed: hasSigned
         })
       })
     )
 
-    return signatureRequest
+    return sigRequest
   })
 
   // TODO: NOTIFY

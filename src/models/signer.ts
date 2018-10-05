@@ -18,3 +18,33 @@ export async function saveSigner(client: DBClient, signer: Signer) {
   )
   return rows[0]
 }
+
+export async function setSignersHasSignedFlags(
+  client: DBClient,
+  signatureRequestID: string,
+  accountIDs: string[]
+) {
+  const { rowCount } = await client.query(
+    "UPDATE signers SET has_signed = true WHERE signature_request = $1 AND account_id = ANY($2)",
+    [signatureRequestID, accountIDs]
+  )
+
+  if (rowCount < accountIDs.length) {
+    throw new Error(
+      `Could not set signer has_signed flag for all signers. Signature request: ${signatureRequestID}, Account IDs: ${accountIDs.join(
+        ", "
+      )}`
+    )
+  }
+}
+
+export async function queryAllSignatureRequestSigners(
+  client: DBClient,
+  signatureRequestID: string
+) {
+  const { rows } = await client.query(
+    "SELECT account_id FROM signers WHERE signature_request = $1",
+    [signatureRequestID]
+  )
+  return rows.map(row => row.account_id as string)
+}

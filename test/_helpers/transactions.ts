@@ -1,5 +1,6 @@
 import axios from "axios"
-import { Keypair, Network, Server, TransactionBuilder, xdr } from "stellar-sdk"
+import qs from "qs"
+import { Keypair, Network, Server, Transaction, TransactionBuilder, xdr } from "stellar-sdk"
 
 function fail(message: string): never {
   throw new Error(message)
@@ -26,4 +27,20 @@ export async function createTransaction(accountKeypair: Keypair, operations: xdr
   tx.sign(accountKeypair)
 
   return tx
+}
+
+export function cosignSignatureRequest(requestURI: string, cosignerKeypair: Keypair) {
+  const requestParams = qs.parse(requestURI.replace(/^.*\?/, ""))
+
+  const rehydratedTx = new Transaction(requestParams.xdr)
+  rehydratedTx.sign(cosignerKeypair)
+
+  if (!requestParams.callback) {
+    throw new Error(`Expected "callback" parameter in co-signature request URI.`)
+  }
+
+  return {
+    collateURL: requestParams.callback.replace(/^url:/, ""),
+    cosignedTx: rehydratedTx
+  }
 }

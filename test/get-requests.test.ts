@@ -11,7 +11,7 @@ async function seed(database: Pool) {
     {
       id: "c6acda04-8bad-4b21-8e04-f6756626f66f",
       designated_coordinator: true,
-      request_url:
+      request_uri:
         "web+stellar:tx?xdr=AAAAAL6Qe0ushP7lzogR2y3vyb8LKiorvD1U2KIlfs1wRBliAAAAZAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAABEz4bSpWmsmrXcIVAkY2hM3VdeCBJse56M18LaGzHQUAAAAAAAAAAACadvgAAAAAAAAAAA",
       signatures_base64: [],
       source_account_id: "GC7JA62LVSCP5ZOORAI5WLPPZG7QWKRKFO6D2VGYUISX5TLQIQMWEIY3"
@@ -19,7 +19,7 @@ async function seed(database: Pool) {
     {
       id: "ae4fb902-f02a-4f3f-b5d1-c9221b7cb40c",
       designated_coordinator: true,
-      request_url:
+      request_uri:
         "web+stellar:tx?xdr=AAAAAP+yw+ZEuNg533pUmwlYxfrq6/BoMJqiJ8vuQhf6rHWmAAAAZAB8NHAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAA/7LD5kS42DnfelSbCVjF+urr8GgwmqIny+5CF/qsdaYAAAAAAAAAAACYloAAAAAAAAAAAA",
       signatures_base64: [],
       source_account_id: "GD73FQ7GIS4NQOO7PJKJWCKYYX5OV27QNAYJVIRHZPXEEF72VR22MLXU"
@@ -53,17 +53,15 @@ test("can list pending requests by source", async t =>
       .expect(200)
 
     t.is(response.body.length, 1)
-    t.deepEqual(response.body, [
-      {
-        account_role: "source",
-        created_at: response.body[0].created_at,
-        updated_at: response.body[0].updated_at,
-        request_url:
-          "web+stellar:tx?xdr=AAAAAL6Qe0ushP7lzogR2y3vyb8LKiorvD1U2KIlfs1wRBliAAAAZAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAABEz4bSpWmsmrXcIVAkY2hM3VdeCBJse56M18LaGzHQUAAAAAAAAAAACadvgAAAAAAAAAAA",
-        signer_count: 2,
-        signature_count: 1
-      }
-    ])
+
+    t.is(response.body[0].account_role, "source")
+    t.true(
+      response.body[0].request_uri.startsWith(
+        "web+stellar:tx?xdr=AAAAAL6Qe0ushP7lzogR2y3vyb8LKiorvD1U2KIlfs1wRBliAAAAZAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAABEz4bSpWmsmrXcIVAkY2hM3VdeCBJse56M18LaGzHQUAAAAAAAAAAACadvgAAAAAAAAAAA&callback="
+      )
+    )
+    t.is(response.body[0].signer_count, 2)
+    t.is(response.body[0].signature_count, 1)
   }))
 
 test("can list pending requests by co-signer", async t =>
@@ -75,15 +73,13 @@ test("can list pending requests by co-signer", async t =>
       .expect(200)
 
     t.is(response.body.length, 1)
-    t.deepEqual(response.body, [
-      {
-        account_role: "cosigner",
-        created_at: response.body[0].created_at,
-        updated_at: response.body[0].updated_at,
-        request_url:
-          "web+stellar:tx?xdr=AAAAAL6Qe0ushP7lzogR2y3vyb8LKiorvD1U2KIlfs1wRBliAAAAZAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAABEz4bSpWmsmrXcIVAkY2hM3VdeCBJse56M18LaGzHQUAAAAAAAAAAACadvgAAAAAAAAAAA",
-        signer_count: 2,
-        signature_count: 1
-      }
-    ])
+
+    t.is(response.body[0].account_role, "cosigner")
+    t.true(
+      response.body[0].request_uri.startsWith(
+        "web+stellar:tx?xdr=AAAAAL6Qe0ushP7lzogR2y3vyb8LKiorvD1U2KIlfs1wRBliAAAAZAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAABEz4bSpWmsmrXcIVAkY2hM3VdeCBJse56M18LaGzHQUAAAAAAAAAAACadvgAAAAAAAAAAA&callback="
+      )
+    )
+    t.is(response.body[0].signer_count, 2)
+    t.is(response.body[0].signature_count, 1)
   }))

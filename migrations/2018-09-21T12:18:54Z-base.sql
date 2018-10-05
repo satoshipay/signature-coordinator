@@ -4,8 +4,7 @@ CREATE TABLE signature_requests (
   updated_at TIMESTAMP DEFAULT NOW(),
   completed_at TIMESTAMP DEFAULT NULL,
   designated_coordinator BOOLEAN NOT NULL,
-  request_url TEXT NOT NULL,
-  signatures_base64 TEXT[],
+  request_uri TEXT NOT NULL,
   source_account_id VARCHAR(56) NOT NULL
 );
 
