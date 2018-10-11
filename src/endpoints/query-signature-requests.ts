@@ -1,38 +1,29 @@
 import { database } from "../database"
 import {
-  querySignatureRequestsBySource,
-  querySignatureRequestsByCosigner,
-  SignatureRequestWithCosignerCounts
+  querySignatureRequestsBySigner,
+  serializeSignatureRequest
 } from "../models/signature-request"
-
-function respondSignatureRequest(
-  signatureRequest: SignatureRequestWithCosignerCounts,
-  accountRole: string
-) {
-  return {
-    account_role: accountRole,
-    id: signatureRequest.id,
-    created_at: signatureRequest.created_at,
-    updated_at: signatureRequest.updated_at,
-    request_uri: signatureRequest.request_uri,
-    signer_count: signatureRequest.signer_count,
-    signature_count: signatureRequest.signature_count
-  }
-}
+import { serializeSigner, queryAllSignatureRequestSigners } from "../models/signer"
 
 interface QueryOptions {
   cursor?: number
   limit?: number
 }
 
-export async function querySignatureRequests(accountID: string, queryOptions: QueryOptions = {}) {
-  const [originatingRequests, cosignatureRequests] = await Promise.all([
-    querySignatureRequestsBySource(database, accountID, queryOptions),
-    querySignatureRequestsByCosigner(database, accountID, queryOptions)
-  ])
+export async function querySignatureRequests(
+  accountIDs: string[],
+  queryOptions: QueryOptions = {}
+) {
+  const signatureRequests = await querySignatureRequestsBySigner(database, accountIDs, queryOptions)
 
-  return [
-    ...originatingRequests.map(request => respondSignatureRequest(request, "source")),
-    ...cosignatureRequests.map(request => respondSignatureRequest(request, "cosigner"))
-  ]
+  const signatureRequestsSerialized = await Promise.all(
+    signatureRequests.map(async signatureRequest => ({
+      signatureRequest: serializeSignatureRequest(signatureRequest),
+      signers: (await queryAllSignatureRequestSigners(database, signatureRequest.id)).map(signer =>
+        serializeSigner(signer)
+      )
+    }))
+  )
+
+  return signatureRequestsSerialized
 }

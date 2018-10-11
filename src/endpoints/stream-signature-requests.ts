@@ -1,7 +1,7 @@
 import { EventStream } from "http-event-stream"
 
-import { SignatureRequest } from "../models/signature-request"
-import { Signer } from "../models/signer"
+import { serializeSignatureRequest, SignatureRequest } from "../models/signature-request"
+import { serializeSigner, Signer } from "../models/signer"
 import { notifications } from "../notifications"
 
 function sendEvent(
@@ -14,15 +14,8 @@ function sendEvent(
     event: eventName,
     id: signatureRequest.created_at,
     data: JSON.stringify({
-      signatureRequest: {
-        id: signatureRequest.id,
-        request_uri: signatureRequest.request_uri,
-        source_account_id: signatureRequest.source_account_id
-      },
-      signers: signers.map(signer => ({
-        account_id: signer.account_id,
-        has_signed: signer.has_signed
-      }))
+      signatureRequest: serializeSignatureRequest(signatureRequest),
+      signers: signers.map(signer => serializeSigner(signer))
     })
   })
 }

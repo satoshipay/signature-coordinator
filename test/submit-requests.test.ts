@@ -13,8 +13,9 @@ const cosignerKeypair = Keypair.random()
 const someOtherKeypair = Keypair.random()
 
 test.before(async () => {
-  console.log("Multisig account:", multisigAccountKeypair.publicKey())
-  console.log("Cosigner pubkey:", cosignerKeypair.publicKey())
+  console.log("Request submission tests")
+  console.log("  Multisig account:", multisigAccountKeypair.publicKey())
+  console.log("  Cosigner pubkey:", cosignerKeypair.publicKey())
 
   await topup(multisigAccountKeypair.publicKey())
 
@@ -67,17 +68,24 @@ test("can submit a co-signature request", async t =>
       1,
       "Expected one signature request for the cosigner public key."
     )
-    t.is(cosignerResponse.body[0].account_role, "cosigner")
     t.true(cosignerResponse.body[0].request_uri.startsWith(urlFormattedRequest + "&callback="))
-    t.is(cosignerResponse.body[0].signer_count, 2)
-    t.is(cosignerResponse.body[0].signature_count, 1)
+    t.is(cosignerResponse.body[0]._embedded.signers.length, 2)
+    t.is(
+      cosignerResponse.body[0]._embedded.signers.filter((signer: any) => signer.has_signed).length,
+      1
+    )
 
     const sourceResponse = await request(server)
       .get(`/requests/${multisigAccountKeypair.publicKey()}`)
       .expect(200)
 
     t.is(sourceResponse.body.length, 1, "Expected one signature request for the source public key.")
-    t.is(sourceResponse.body[0].account_role, "source")
+    t.is(
+      sourceResponse.body[0]._embedded.signers.find(
+        (signer: any) => signer.account_id === multisigAccountKeypair.publicKey()
+      ).has_signed,
+      true
+    )
     t.true(sourceResponse.body[0].request_uri.startsWith(urlFormattedRequest + "&callback="))
 
     const streamedEvents = eventStreamRecording.stop()
