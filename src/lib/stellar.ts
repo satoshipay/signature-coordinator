@@ -1,28 +1,40 @@
-import axios from "axios"
-import { AccountResponse, Keypair, Network, Transaction, xdr } from "stellar-sdk"
+import { AccountResponse, Keypair, Network, Server, Transaction, xdr } from "stellar-sdk"
+
+import { horizonServers } from "../config"
 
 interface SignatureWithHint extends xdr.DecoratedSignature {
   hint(): Buffer
 }
 
+export const networkPassphrases = {
+  mainnet: "Public Global Stellar Network ; September 2015",
+  testnet: "Test SDF Network ; September 2015"
+}
+
 const dedupe = <T>(array: T[]) => [...new Set(array)]
 const sum = (array: number[]) => array.reduce((total, element) => total + element, 0)
 
-export async function selectStellarNetwork(horizonURL: string) {
-  const response = await axios.get(horizonURL)
-  const networkPassphrase = response.data.network_passphrase
-
+export function getHorizon(networkPassphrase: string): Server {
   switch (networkPassphrase) {
-    case "Public Global Stellar Network ; September 2015":
+    case networkPassphrases.mainnet:
+      return horizonServers.mainnet
+    case networkPassphrases.testnet:
+      return horizonServers.testnet
+    default:
+      throw new Error(`Unknown network passphrase: ${networkPassphrase}`)
+  }
+}
+
+export function selectStellarNetwork(networkPassphrase: string) {
+  switch (networkPassphrase) {
+    case networkPassphrases.mainnet:
       Network.usePublicNetwork()
       break
-    case "Test SDF Network ; September 2015":
+    case networkPassphrases.testnet:
       Network.useTestNetwork()
       break
     default:
-      throw new Error(
-        `Encountered unknown network passphrase on ${horizonURL}: "${networkPassphrase}"`
-      )
+      throw new Error(`Unknown network passphrase: "${networkPassphrase}"`)
   }
 }
 

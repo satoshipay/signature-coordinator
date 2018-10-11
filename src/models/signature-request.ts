@@ -2,16 +2,6 @@ import { DBClient } from "../database"
 
 type Omit<T, K extends keyof any> = Pick<T, Exclude<keyof T, K>>
 
-export interface TxParameters {
-  xdr: string
-  callback?: string
-  pubkey?: string
-  msg?: string
-  network_passphrase?: string
-  origin_domain?: string
-  signature?: string
-}
-
 export interface SignatureRequest {
   id: string
   created_at: string

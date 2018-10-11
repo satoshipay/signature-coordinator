@@ -3,12 +3,10 @@ import terminus from "@godaddy/terminus"
 import createApp from "./app"
 import config from "./config"
 import { connectToDatabase } from "./database"
-import { selectStellarNetwork } from "./lib/stellar"
 import { subscribeToChannels } from "./notifications"
 
 async function launch() {
   await connectToDatabase()
-  await selectStellarNetwork(config.horizon)
 
   subscribeToChannels()
   const app = createApp(config)

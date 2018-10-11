@@ -6,10 +6,8 @@ function fail(message: string): never {
   throw new Error(message)
 }
 
-const horizonURL = process.env.HORIZON || fail("No HORIZON set.")
+const horizonURL = process.env.HORIZON_TESTNET || fail("No HORIZON_TESTNET set.")
 export const horizon = new Server(horizonURL)
-
-Network.useTestNetwork()
 
 export async function topup(publicKey: string) {
   await axios.get(`${horizonURL}/friendbot?addr=${publicKey}`)
@@ -24,6 +22,8 @@ export async function createTransaction(accountKeypair: Keypair, operations: xdr
   }
 
   const tx = txBuilder.build()
+
+  Network.useTestNetwork()
   tx.sign(accountKeypair)
 
   return tx
