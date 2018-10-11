@@ -27,14 +27,17 @@ export type NewSignatureRequest = Omit<
   "created_at" | "updated_at" | "completed_at"
 >
 
-export type SignatureRequestWithCosignerCounts = SignatureRequest & {
-  signer_count: number
-  signature_count: number
-}
-
 interface QueryOptions {
   cursor?: number
   limit?: number
+}
+
+export function serializeSignatureRequest(signatureRequest: SignatureRequest) {
+  return {
+    id: signatureRequest.id,
+    request_uri: signatureRequest.request_uri,
+    source_account_id: signatureRequest.source_account_id
+  }
 }
 
 export async function createSignatureRequest(
@@ -103,73 +106,29 @@ export async function querySignatureRequestByID(client: DBClient, id: string) {
   return rows.length > 0 ? (rows[0] as SignatureRequest) : null
 }
 
-export async function querySignatureRequestsBySource(
+export async function querySignatureRequestsBySigner(
   client: DBClient,
-  sourceAccountID: string,
+  accountIDs: string[],
   queryOptions: QueryOptions = {}
 ) {
   const { rows } = await client.query(
     `
-      SELECT
-        *,
-        (
-          SELECT count(account_id)::INT
-          FROM signers
-          WHERE signature_request = signature_requests.id
-        ) AS signer_count,
-        (
-          SELECT count(account_id)::INT
-          FROM signers
-          WHERE signature_request = signature_requests.id
-          AND has_signed = true
-        ) AS signature_count
-      FROM
-        signature_requests
-      WHERE
-        source_account_id = $1
-        AND created_at > $2
-        AND completed_at IS NULL
-      ORDER BY created_at ASC
-      LIMIT $3
-    `,
-    [sourceAccountID, new Date(queryOptions.cursor || 0), queryOptions.limit || 100]
+    SELECT
+      DISTINCT signature_requests.*
+    FROM
+      signature_requests LEFT JOIN signers
+      ON (signature_requests.id = signers.signature_request)
+    WHERE
+      (
+        signers.account_id = ANY($1) OR
+        signature_requests.source_account_id = ANY($1)
+      )
+      AND created_at > $2
+      AND completed_at IS NULL
+    ORDER BY signature_requests.created_at ASC
+    LIMIT $3
+  `,
+    [accountIDs, new Date(queryOptions.cursor || 0), queryOptions.limit || 100]
   )
-  return rows as SignatureRequestWithCosignerCounts[]
-}
-
-export async function querySignatureRequestsByCosigner(
-  client: DBClient,
-  cosignerAccountID: string,
-  queryOptions: QueryOptions = {}
-) {
-  const { rows } = await client.query(
-    `
-      SELECT
-        signature_requests.*,
-        (
-          SELECT count(account_id)::INT
-          FROM signers
-          WHERE signature_request = signature_requests.id
-        ) AS signer_count,
-        (
-          SELECT count(account_id)::INT
-          FROM signers
-          WHERE signature_request = signature_requests.id
-          AND has_signed = true
-        ) AS signature_count
-      FROM
-        signature_requests
-      LEFT JOIN signers
-        ON signature_requests.id = signers.signature_request
-      WHERE
-        signers.account_id = $1
-        AND signature_requests.source_account_id != $1
-        AND created_at > $2
-        AND completed_at IS NULL
-      ORDER BY signature_requests.created_at ASC
-      LIMIT $3
-    `,
-    [cosignerAccountID, new Date(queryOptions.cursor || 0), queryOptions.limit || 100]
-  )
-  return rows as SignatureRequestWithCosignerCounts[]
+  return rows as SignatureRequest[]
 }

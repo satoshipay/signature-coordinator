@@ -86,7 +86,7 @@ export async function handleSignatureRequestSubmission(requestURI: string) {
       source_account_id: tx.source
     })
 
-    const signers: Signer[] = requiredSigners.map(signerPublicKey => {
+    const signersToCreate: Signer[] = requiredSigners.map(signerPublicKey => {
       const hasSigned = tx.signatures.some(signature =>
         signatureMatchesPublicKey(signature, signerPublicKey)
       )
@@ -98,14 +98,14 @@ export async function handleSignatureRequestSubmission(requestURI: string) {
     })
 
     await Promise.all(
-      signers.map(async signer => {
+      signersToCreate.map(async signer => {
         await saveSigner(client, signer)
       })
     )
 
     return {
       signatureRequest: sigRequest,
-      signers
+      signers: signersToCreate
     }
   })
 

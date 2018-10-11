@@ -53,15 +53,13 @@ test("can list pending requests by source", async t =>
       .expect(200)
 
     t.is(response.body.length, 1)
-
-    t.is(response.body[0].account_role, "source")
     t.true(
       response.body[0].request_uri.startsWith(
         "web+stellar:tx?xdr=AAAAAL6Qe0ushP7lzogR2y3vyb8LKiorvD1U2KIlfs1wRBliAAAAZAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAABEz4bSpWmsmrXcIVAkY2hM3VdeCBJse56M18LaGzHQUAAAAAAAAAAACadvgAAAAAAAAAAA&callback="
       )
     )
-    t.is(response.body[0].signer_count, 2)
-    t.is(response.body[0].signature_count, 1)
+    t.is(response.body[0]._embedded.signers.length, 2)
+    t.is(response.body[0]._embedded.signers.filter((signer: any) => signer.has_signed).length, 1)
   }))
 
 test("can list pending requests by co-signer", async t =>
@@ -69,17 +67,24 @@ test("can list pending requests by co-signer", async t =>
     await seed(database)
 
     const response = await request(server)
-      .get("/requests/GAHPOF5MB7V4HGHUVMP3VCJUEJ4KFNNJNUR7IXETYW2XCQPEIOVEQE6E")
+      .get(
+        "/requests/GAHPOF5MB7V4HGHUVMP3VCJUEJ4KFNNJNUR7IXETYW2XCQPEIOVEQE6E,GBPBFWVBADSESGADWEGC7SGTHE3535FWK4BS6UW3WMHX26PHGIH5NF4W"
+      )
       .expect(200)
 
     t.is(response.body.length, 1)
-
-    t.is(response.body[0].account_role, "cosigner")
     t.true(
       response.body[0].request_uri.startsWith(
         "web+stellar:tx?xdr=AAAAAL6Qe0ushP7lzogR2y3vyb8LKiorvD1U2KIlfs1wRBliAAAAZAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAABEz4bSpWmsmrXcIVAkY2hM3VdeCBJse56M18LaGzHQUAAAAAAAAAAACadvgAAAAAAAAAAA&callback="
       )
     )
-    t.is(response.body[0].signer_count, 2)
-    t.is(response.body[0].signature_count, 1)
+    t.is(response.body[0]._embedded.signers.length, 2)
+    t.is(
+      response.body[0]._embedded.signers.find(
+        (signer: any) =>
+          signer.account_id === "GAHPOF5MB7V4HGHUVMP3VCJUEJ4KFNNJNUR7IXETYW2XCQPEIOVEQE6E"
+      ).has_signed,
+      false
+    )
+    t.is(response.body[0]._embedded.signers.filter((signer: any) => signer.has_signed).length, 1)
   }))

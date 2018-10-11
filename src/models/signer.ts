@@ -6,6 +6,13 @@ export interface Signer {
   has_signed: boolean
 }
 
+export function serializeSigner(signer: Signer) {
+  return {
+    account_id: signer.account_id,
+    has_signed: signer.has_signed
+  }
+}
+
 export async function saveSigner(client: DBClient, signer: Signer) {
   const { rows } = await client.query(
     `

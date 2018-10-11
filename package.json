@@ -52,6 +52,7 @@
     "pg-listen": "^0.1.2",
     "qs": "^6.5.2",
     "stellar-sdk": "^0.11.0",
+    "typed-emitter": "^0.1.0",
     "uuid": "^3.3.2"
   },
   "devDependencies": {
@@ -78,7 +79,7 @@
     "tap-xunit": "^1.7.0",
     "ts-node": "^7.0.0",
     "ts-node-dev": "^1.0.0-pre.26",
-    "tslint": "^5.10.0",
+    "tslint": "^5.11.0",
     "tslint-config-prettier": "^1.13.0",
     "typescript": "^3.1.1"
   }

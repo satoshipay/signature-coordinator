@@ -30,24 +30,25 @@ export default function createRouter(config: Config) {
     })
   )
 
-  router.get("/requests/:accountID", async ({ params, query, response }) => {
-    const { accountID } = params
+  router.get("/requests/:accountIDs", async ({ params, query, response }) => {
+    const accountIDs = params.accountIDs.split(",")
     const cursor = query.cursor ? Number.parseInt(query.cursor, 10) : undefined
     const limit = query.limit ? Number.parseInt(query.limit, 10) : undefined
 
-    const requests = await querySignatureRequests(accountID, { cursor, limit })
+    const serializedSignatureRequests = await querySignatureRequests(accountIDs, { cursor, limit })
 
-    const preparedRequests = requests.map(request => {
-      const collateURL = createHRef(`/signatures/collate/${request.id}`)
+    response.body = serializedSignatureRequests.map(serialized => {
+      const collateURL = createHRef(`/signatures/collate/${serialized.signatureRequest.id}`)
       return {
-        ...request,
-        request_uri: patchSignatureRequestURIParameters(request.request_uri, {
+        ...serialized.signatureRequest,
+        request_uri: patchSignatureRequestURIParameters(serialized.signatureRequest.request_uri, {
           callback: `url:${collateURL}`
-        })
+        }),
+        _embedded: {
+          signers: serialized.signers
+        }
       }
     })
-
-    response.body = preparedRequests
   })
 
   router.post("/submit", async ({ request, response }) => {
