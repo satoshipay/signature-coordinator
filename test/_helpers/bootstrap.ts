@@ -6,7 +6,6 @@ import { Pool } from "pg"
 import createApp from "../../src/app"
 import config, { Config } from "../../src/config"
 import { connectToDatabase, database } from "../../src/database"
-import { selectStellarNetwork } from "../../src/lib/stellar"
 import { subscribeToChannels } from "../../src/notifications"
 import { prepareDatabase } from "./database"
 
@@ -18,7 +17,6 @@ interface App {
 
 test.before(async () => {
   await connectToDatabase()
-  await selectStellarNetwork(config.horizon)
 
   subscribeToChannels()
 })

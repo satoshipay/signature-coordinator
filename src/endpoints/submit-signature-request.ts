@@ -1,19 +1,20 @@
 import createError from "http-errors"
-import qs from "qs"
 import { Transaction } from "stellar-sdk"
 import uuid from "uuid"
 
-import { horizon } from "../config"
 import { transaction } from "../database"
 import { notifyNewSignatureRequest } from "../notifications"
+import { parseRequestURL } from "../lib/sep-0007"
 import {
   getAllSigners,
   getAllSources,
+  getHorizon,
   hasSufficientSignatures,
+  networkPassphrases,
   signatureMatchesPublicKey
 } from "../lib/stellar"
 import { saveSigner, Signer } from "../models/signer"
-import { createSignatureRequest, TxParameters } from "../models/signature-request"
+import { createSignatureRequest } from "../models/signature-request"
 
 function parseTransactionXDR(base64XDR: string) {
   try {
@@ -23,38 +24,13 @@ function parseTransactionXDR(base64XDR: string) {
   }
 }
 
-function validateParameters(parameters: any): TxParameters {
-  if (!parameters.xdr) {
-    throw createError(400, "Missing mandatory parameter in request URI: xdr")
-  }
-
-  return parameters
-}
-
-function parseRequestURL(requestURI: string) {
-  if (!requestURI.startsWith("web+stellar:")) {
-    throw createError(400, "Expected request to start with 'web+stellar:'")
-  }
-
-  const [operation, queryString] = requestURI.replace(/^web\+stellar:/, "").split("?", 2)
-  const parameters = qs.parse(queryString)
-
-  if (operation !== "tx") {
-    throw createError(400, "This endpoint supports the 'tx' operation only.")
-  }
-
-  return {
-    operation,
-    parameters: validateParameters(parameters)
-  }
-}
-
 export async function handleSignatureRequestSubmission(requestURI: string) {
   const { parameters } = parseRequestURL(requestURI)
+  const network = parameters.network_passphrase || networkPassphrases.mainnet
   const tx = parseTransactionXDR(parameters.xdr)
 
   const sourceAccounts = await Promise.all(
-    getAllSources(tx).map(sourcePublicKey => horizon.loadAccount(sourcePublicKey))
+    getAllSources(tx).map(sourcePublicKey => getHorizon(network).loadAccount(sourcePublicKey))
   )
   const requiredSigners = getAllSigners(sourceAccounts)
 

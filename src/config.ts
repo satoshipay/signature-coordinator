@@ -15,6 +15,9 @@ function getConfig() {
     horizon: {
       sanitize: sanitize.string
     },
+    horizonTestnet: {
+      sanitize: sanitize.string
+    },
     port: {
       default: 3000,
       sanitize: sanitize.number
@@ -26,4 +29,7 @@ const config = getConfig()
 
 export default config
 
-export const horizon = new Server(config.horizon)
+export const horizonServers = {
+  mainnet: new Server(config.horizon),
+  testnet: new Server(config.horizonTestnet)
+}

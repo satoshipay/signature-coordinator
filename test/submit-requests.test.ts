@@ -7,6 +7,7 @@ import { createSignatureRequestURI } from "../src/lib/sep-0007"
 import { withApp } from "./_helpers/bootstrap"
 import { recordEventStream } from "./_helpers/event-stream"
 import { cosignSignatureRequest, createTransaction, horizon, topup } from "./_helpers/transactions"
+import { networkPassphrases } from "../src/lib/stellar"
 
 const multisigAccountKeypair = Keypair.random()
 const cosignerKeypair = Keypair.random()
@@ -49,7 +50,9 @@ test("can submit a co-signature request", async t =>
       `http://localhost:${config.port}/stream/${multisigAccountKeypair.publicKey()}`,
       ["signature-request"]
     )
-    const urlFormattedRequest = createSignatureRequestURI(tx)
+    const urlFormattedRequest = createSignatureRequestURI(tx, {
+      network_passphrase: networkPassphrases.testnet
+    })
 
     await request(server)
       .post("/submit")
@@ -111,7 +114,9 @@ test("can submit a co-sig request and collate a 2nd signature", async t =>
       `http://localhost:${config.port}/stream/${cosignerKeypair.publicKey()}`,
       ["signature-request:submitted"]
     )
-    const urlFormattedRequest = createSignatureRequestURI(tx)
+    const urlFormattedRequest = createSignatureRequestURI(tx, {
+      network_passphrase: networkPassphrases.testnet
+    })
 
     await request(server)
       .post("/submit")

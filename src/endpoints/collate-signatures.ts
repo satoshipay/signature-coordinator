@@ -1,13 +1,15 @@
 import createError from "http-errors"
-import { Transaction } from "stellar-sdk"
+import { Server, Transaction } from "stellar-sdk"
 
-import { horizon } from "../config"
 import { database, transaction } from "../database"
 import { notifySignatureRequestSubmitted, notifySignatureRequestUpdated } from "../notifications"
-import { patchSignatureRequestURIParameters } from "../lib/sep-0007"
+import { parseRequestURL, patchSignatureRequestURIParameters } from "../lib/sep-0007"
 import {
   collateTransactionSignatures,
+  getHorizon,
   hasSufficientSignatures,
+  networkPassphrases,
+  selectStellarNetwork,
   signatureMatchesPublicKey
 } from "../lib/stellar"
 import {
@@ -18,7 +20,7 @@ import {
 } from "../models/signature-request"
 import { queryAllSignatureRequestSigners, setSignersHasSignedFlags } from "../models/signer"
 
-async function submitToHorizon(tx: Transaction) {
+async function submitToHorizon(horizon: Server, tx: Transaction) {
   try {
     return await horizon.submitTransaction(tx)
   } catch (error) {
@@ -68,10 +70,19 @@ export async function collateSignatures(signatureRequestID: string, txXDR: strin
     throw createError(404, `Signature request not found: ${signatureRequestID}`)
   }
 
+  const signatureRequestParams = parseRequestURL(signatureRequest.request_uri).parameters
   const updatedSignaturesBase64 = inputTx.signatures.map(signature =>
     signature.toXDR().toString("base64")
   )
+
+  await selectStellarNetwork(
+    signatureRequestParams.network_passphrase || networkPassphrases.mainnet
+  )
+
   const collatedTx = collateTransactionSignatures(inputTx, updatedSignaturesBase64)
+  const horizon = getHorizon(
+    signatureRequestParams.network_passphrase || networkPassphrases.mainnet
+  )
 
   const [sourceAccount, allSigners] = await Promise.all([
     horizon.loadAccount(collatedTx.source),
@@ -91,7 +102,7 @@ export async function collateSignatures(signatureRequestID: string, txXDR: strin
   })
 
   if (hasSufficientSignatures(sourceAccount, collatedTx.signatures)) {
-    const submissionResponse = await submitToHorizon(collatedTx)
+    const submissionResponse = await submitToHorizon(horizon, collatedTx)
     await markSignatureRequestAsCompleted(database, signatureRequestID)
 
     await notifySignatureRequestSubmitted({
