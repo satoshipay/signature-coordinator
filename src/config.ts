@@ -6,7 +6,6 @@ export type Config = ReturnType<typeof getConfig>
 function getConfig() {
   return parse({
     baseUrl: {
-      default: "/",
       sanitize: sanitize.string
     },
     database: {
