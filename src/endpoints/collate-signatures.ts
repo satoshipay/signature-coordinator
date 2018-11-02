@@ -3,7 +3,7 @@ import { Server, Transaction } from "stellar-sdk"
 
 import { database, transaction } from "../database"
 import { notifySignatureRequestSubmitted, notifySignatureRequestUpdated } from "../notifications"
-import { parseRequestURL, patchSignatureRequestURIParameters } from "../lib/sep-0007"
+import { parseRequestURI, patchSignatureRequestURIParameters } from "../lib/sep-0007"
 import {
   collateTransactionSignatures,
   getHorizon,
@@ -70,7 +70,7 @@ export async function collateSignatures(signatureRequestHash: string, txXDR: str
     throw createError(404, `Signature request not found: ${signatureRequestHash}`)
   }
 
-  const signatureRequestParams = parseRequestURL(signatureRequest.request_uri).parameters
+  const signatureRequestParams = parseRequestURI(signatureRequest.request_uri).parameters
   const updatedSignaturesBase64 = inputTx.signatures.map(signature =>
     signature.toXDR().toString("base64")
   )

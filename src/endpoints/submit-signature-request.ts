@@ -5,7 +5,7 @@ import uuid from "uuid"
 
 import { transaction } from "../database"
 import { notifyNewSignatureRequest } from "../notifications"
-import { parseRequestURL } from "../lib/sep-0007"
+import { parseRequestURI } from "../lib/sep-0007"
 import {
   getAllSigners,
   getAllSources,
@@ -32,7 +32,12 @@ function hashSignatureRequest(requestURI: string) {
 }
 
 export async function handleSignatureRequestSubmission(requestURI: string) {
-  const { parameters } = parseRequestURL(requestURI)
+  const { operation, parameters } = parseRequestURI(requestURI)
+
+  if (operation !== "tx") {
+    throw createError(400, "This endpoint supports the 'tx' operation only.")
+  }
+
   const network = parameters.network_passphrase || networkPassphrases.mainnet
   const tx = parseTransactionXDR(parameters.xdr)
 

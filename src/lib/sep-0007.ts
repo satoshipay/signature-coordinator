@@ -48,17 +48,13 @@ function validateParameters(parameters: any): TxParameters {
   return parameters
 }
 
-export function parseRequestURL(requestURI: string) {
+export function parseRequestURI(requestURI: string) {
   if (!requestURI.startsWith("web+stellar:")) {
     throw createError(400, "Expected request to start with 'web+stellar:'")
   }
 
   const [operation, queryString] = requestURI.replace(/^web\+stellar:/, "").split("?", 2)
   const parameters = qs.parse(queryString)
-
-  if (operation !== "tx") {
-    throw createError(400, "This endpoint supports the 'tx' operation only.")
-  }
 
   return {
     operation,
