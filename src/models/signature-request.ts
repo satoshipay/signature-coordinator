@@ -5,9 +5,9 @@ type Omit<T, K extends keyof any> = Pick<T, Exclude<keyof T, K>>
 export interface SignatureRequest {
   id: string
   hash: string
-  created_at: Date
-  updated_at: Date
-  completed_at: Date | null
+  created_at: string
+  updated_at: string
+  completed_at: string | null
   designated_coordinator: boolean
   request_uri: string
   source_account_id: string

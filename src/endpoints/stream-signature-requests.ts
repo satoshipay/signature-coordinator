@@ -12,7 +12,7 @@ function sendEvent(
 ) {
   eventStream.sendMessage({
     event: eventName,
-    id: signatureRequest.created_at,
+    id: String(new Date(signatureRequest.created_at).getTime()),
     data: JSON.stringify({
       signatureRequest: serializeSignatureRequest(signatureRequest),
       signers: signers.map(signer => serializeSigner(signer))
