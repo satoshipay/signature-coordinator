@@ -187,3 +187,53 @@ test("can submit a co-sig request and collate a 2nd signature", async t =>
       multisigAccountKeypair.publicKey()
     )
   }))
+
+test("signature request submission is idempotent", async t =>
+  withApp(async ({ server }) => {
+    const tx = await createTransaction(multisigAccountKeypair, [
+      Operation.createAccount({
+        destination: someOtherKeypair.publicKey(),
+        startingBalance: "1.0"
+      })
+    ])
+
+    const urlFormattedRequest = createSignatureRequestURI(tx, {
+      network_passphrase: networkPassphrases.testnet
+    })
+
+    const firstSubmissionResponse = await request(server)
+      .post("/submit")
+      .set("Content-Type", "text/plain")
+      .send(urlFormattedRequest)
+      .expect((response: Response) => {
+        t.is(response.status, 200, response.body.message || response.text)
+      })
+
+    t.is(firstSubmissionResponse.body.hash, sha256(urlFormattedRequest))
+
+    const secondSubmissionResponse = await request(server)
+      .post("/submit")
+      .set("Content-Type", "text/plain")
+      .send(urlFormattedRequest)
+      .expect((response: Response) => {
+        t.is(response.status, 200, response.body.message || response.text)
+      })
+
+    t.is(secondSubmissionResponse.body.hash, sha256(urlFormattedRequest))
+
+    const cosignerResponse = await request(server)
+      .get(`/requests/${cosignerKeypair.publicKey()}`)
+      .expect(200)
+
+    t.is(
+      cosignerResponse.body.length,
+      1,
+      "Expected one signature request for the cosigner public key."
+    )
+    t.true(cosignerResponse.body[0].request_uri.startsWith(urlFormattedRequest + "&callback="))
+    t.is(cosignerResponse.body[0]._embedded.signers.length, 2)
+    t.is(
+      cosignerResponse.body[0]._embedded.signers.filter((signer: any) => signer.has_signed).length,
+      1
+    )
+  }))
