@@ -27,7 +27,9 @@ export function serializeSignatureRequest(signatureRequest: SignatureRequest) {
   return {
     hash: signatureRequest.hash,
     request_uri: signatureRequest.request_uri,
-    source_account_id: signatureRequest.source_account_id
+    created_at: signatureRequest.created_at,
+    updated_at: signatureRequest.updated_at,
+    completed_at: signatureRequest.completed_at
   }
 }
 
