@@ -54,7 +54,7 @@ test("can submit a co-sig request and collate a 2nd signature", async t =>
       network_passphrase: networkPassphrases.testnet
     })
 
-    await request(server)
+    const submissionResponse = await request(server)
       .post("/submit")
       .set("Content-Type", "text/plain")
       .send(urlFormattedRequest)
@@ -110,8 +110,5 @@ test("can submit a co-sig request and collate a 2nd signature", async t =>
     t.is(streamedEvents.length, 1)
 
     t.truthy(streamedEvents[0].data.signatureRequest)
-    t.is(
-      streamedEvents[0].data.signatureRequest.source_account_id,
-      multisigAccountKeypair.publicKey()
-    )
+    t.is(streamedEvents[0].data.signatureRequest.hash, submissionResponse.body.hash)
   }))
