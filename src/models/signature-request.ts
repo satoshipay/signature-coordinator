@@ -4,8 +4,9 @@ type Omit<T, K extends keyof any> = Pick<T, Exclude<keyof T, K>>
 
 export interface SignatureRequest {
   id: string
-  created_at: string
-  updated_at: string
+  hash: string
+  created_at: Date
+  updated_at: Date
   completed_at: Date | null
   designated_coordinator: boolean
   request_uri: string
@@ -24,7 +25,7 @@ interface QueryOptions {
 
 export function serializeSignatureRequest(signatureRequest: SignatureRequest) {
   return {
-    id: signatureRequest.id,
+    hash: signatureRequest.hash,
     request_uri: signatureRequest.request_uri,
     source_account_id: signatureRequest.source_account_id
   }
@@ -34,21 +35,34 @@ export async function createSignatureRequest(
   client: DBClient,
   signatureRequest: NewSignatureRequest
 ) {
-  const { rows } = await client.query(
+  await client.query(
     `
-    INSERT INTO
-      signature_requests
-    (id, designated_coordinator, request_uri, source_account_id)
-    VALUES ($1, $2, $3, $4)
-    RETURNING *
+    INSERT INTO signature_requests
+      (id, hash, designated_coordinator, request_uri, source_account_id)
+    SELECT $1::uuid, $2::text, $3, $4, $5
+    WHERE NOT EXISTS (
+      SELECT id FROM signature_requests WHERE hash = $2
+    )
   `,
     [
       signatureRequest.id,
+      signatureRequest.hash.toLowerCase(),
       signatureRequest.designated_coordinator,
       signatureRequest.request_uri,
       signatureRequest.source_account_id
     ]
   )
+
+  const { rows } = await client.query("SELECT * FROM signature_requests WHERE hash = $1", [
+    signatureRequest.hash
+  ])
+
+  if (rows.length === 0) {
+    throw new Error(
+      `Invariant violation: Could not query just-created signature request with hash ${signatureRequest.hash.toLowerCase()}`
+    )
+  }
+
   return rows[0] as SignatureRequest
 }
 
@@ -86,12 +100,12 @@ export async function markSignatureRequestAsCompleted(client: DBClient, id: stri
   }
 }
 
-export async function querySignatureRequestByID(client: DBClient, id: string) {
+export async function querySignatureRequestByHash(client: DBClient, hash: string) {
   const { rows } = await client.query(
     `
-    SELECT * FROM signature_requests WHERE id = $1
+    SELECT * FROM signature_requests WHERE hash = $1
   `,
-    [id]
+    [hash.toLowerCase()]
   )
   return rows.length > 0 ? (rows[0] as SignatureRequest) : null
 }

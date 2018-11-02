@@ -38,7 +38,7 @@ export default function createRouter(config: Config) {
     const serializedSignatureRequests = await querySignatureRequests(accountIDs, { cursor, limit })
 
     response.body = serializedSignatureRequests.map(serialized => {
-      const collateURL = createHRef(`/signatures/collate/${serialized.signatureRequest.id}`)
+      const collateURL = createHRef(`/signatures/collate/${serialized.signatureRequest.hash}`)
       return {
         ...serialized.signatureRequest,
         request_uri: patchSignatureRequestURIParameters(serialized.signatureRequest.request_uri, {
@@ -59,15 +59,13 @@ export default function createRouter(config: Config) {
     response.body = await handleSignatureRequestSubmission(request.body)
   })
 
-  router.post("/signatures/collate/:id", async ({ params, request, response }) => {
+  router.post("/signatures/collate/:hash", async ({ params, request, response }) => {
     if (!request.body || typeof request.body !== "object") {
       throw createError(400, "Expected application/x-www-form-urlencoded POST body.")
     }
 
-    const signatureRequestID = params.id
     const { xdr } = request.body
-
-    response.body = await collateSignatures(signatureRequestID, xdr)
+    response.body = await collateSignatures(params.hash, xdr)
   })
 
   router.get("/stream/:accountIDs", async context => {

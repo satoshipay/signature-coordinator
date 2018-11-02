@@ -14,16 +14,19 @@ export function serializeSigner(signer: Signer) {
 }
 
 export async function saveSigner(client: DBClient, signer: Signer) {
-  const { rows } = await client.query(
+  await client.query(
     `
     INSERT INTO signers
     (signature_request, account_id, has_signed)
-    VALUES ($1, $2, $3)
-    RETURNING *
+    SELECT $1::uuid, $2::text, $3::boolean
+    WHERE NOT EXISTS (
+      SELECT signature_request FROM signers
+      WHERE signature_request = $1 AND account_id = $2
+    )
   `,
     [signer.signature_request, signer.account_id, signer.has_signed]
   )
-  return rows[0]
+  return signer
 }
 
 export async function setSignersHasSignedFlags(

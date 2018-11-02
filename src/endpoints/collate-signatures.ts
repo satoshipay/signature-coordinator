@@ -14,7 +14,7 @@ import {
 } from "../lib/stellar"
 import {
   markSignatureRequestAsCompleted,
-  querySignatureRequestByID,
+  querySignatureRequestByHash,
   updateSignatureRequestURI,
   SignatureRequest
 } from "../models/signature-request"
@@ -62,12 +62,12 @@ async function updateSignatureRequest(
   })
 }
 
-export async function collateSignatures(signatureRequestID: string, txXDR: string) {
+export async function collateSignatures(signatureRequestHash: string, txXDR: string) {
   const inputTx = new Transaction(txXDR)
-  const signatureRequest = await querySignatureRequestByID(database, signatureRequestID)
+  const signatureRequest = await querySignatureRequestByHash(database, signatureRequestHash)
 
   if (!signatureRequest) {
-    throw createError(404, `Signature request not found: ${signatureRequestID}`)
+    throw createError(404, `Signature request not found: ${signatureRequestHash}`)
   }
 
   const signatureRequestParams = parseRequestURL(signatureRequest.request_uri).parameters
@@ -86,7 +86,7 @@ export async function collateSignatures(signatureRequestID: string, txXDR: strin
 
   const [sourceAccount, allSigners] = await Promise.all([
     horizon.loadAccount(collatedTx.source),
-    queryAllSignatureRequestSigners(database, signatureRequestID)
+    queryAllSignatureRequestSigners(database, signatureRequest.id)
   ])
 
   await updateSignatureRequest(
@@ -94,7 +94,7 @@ export async function collateSignatures(signatureRequestID: string, txXDR: strin
     collatedTx,
     allSigners.map(signer => signer.account_id)
   )
-  const signers = await queryAllSignatureRequestSigners(database, signatureRequestID)
+  const signers = await queryAllSignatureRequestSigners(database, signatureRequest.id)
 
   await notifySignatureRequestUpdated({
     signatureRequest,
@@ -103,7 +103,7 @@ export async function collateSignatures(signatureRequestID: string, txXDR: strin
 
   if (hasSufficientSignatures(sourceAccount, collatedTx.signatures)) {
     const submissionResponse = await submitToHorizon(horizon, collatedTx)
-    await markSignatureRequestAsCompleted(database, signatureRequestID)
+    await markSignatureRequestAsCompleted(database, signatureRequest.id)
 
     await notifySignatureRequestSubmitted({
       signatureRequest,
