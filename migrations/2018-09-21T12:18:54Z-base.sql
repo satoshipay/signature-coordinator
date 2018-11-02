@@ -1,5 +1,6 @@
 CREATE TABLE signature_requests (
   id UUID PRIMARY KEY,
+  hash VARCHAR(64) UNIQUE NOT NULL,
   created_at TIMESTAMP DEFAULT NOW() NOT NULL,
   updated_at TIMESTAMP DEFAULT NOW(),
   completed_at TIMESTAMP DEFAULT NULL,

@@ -1,3 +1,4 @@
+import { createHash } from "crypto"
 import createError from "http-errors"
 import { Transaction } from "stellar-sdk"
 import uuid from "uuid"
@@ -22,6 +23,12 @@ function parseTransactionXDR(base64XDR: string) {
   } catch (error) {
     throw createError(400, "Cannot parse transaction XDR: " + error.message)
   }
+}
+
+function hashSignatureRequest(requestURI: string) {
+  const hash = createHash("sha256")
+  hash.update(requestURI, "utf8")
+  return hash.digest("hex")
 }
 
 export async function handleSignatureRequestSubmission(requestURI: string) {
@@ -57,6 +64,7 @@ export async function handleSignatureRequestSubmission(requestURI: string) {
   const { signatureRequest, signers } = await transaction(async client => {
     const sigRequest = await createSignatureRequest(client, {
       id: uuid.v4(),
+      hash: hashSignatureRequest(requestURI),
       designated_coordinator: true,
       request_uri: requestURI,
       source_account_id: tx.source
@@ -91,6 +99,6 @@ export async function handleSignatureRequestSubmission(requestURI: string) {
   })
 
   return {
-    id: signatureRequest.id
+    hash: signatureRequest.hash
   }
 }

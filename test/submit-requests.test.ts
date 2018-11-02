@@ -1,4 +1,5 @@
 import test from "ava"
+import { createHash } from "crypto"
 import request, { Response } from "supertest"
 import { Keypair, Operation } from "stellar-sdk"
 import URL from "url"
@@ -12,6 +13,12 @@ import { networkPassphrases } from "../src/lib/stellar"
 const multisigAccountKeypair = Keypair.random()
 const cosignerKeypair = Keypair.random()
 const someOtherKeypair = Keypair.random()
+
+function sha256(requestURI: string) {
+  const hash = createHash("sha256")
+  hash.update(requestURI, "utf8")
+  return hash.digest("hex")
+}
 
 test.before(async () => {
   console.log("Request submission tests")
@@ -71,6 +78,7 @@ test("can submit a co-signature request", async t =>
       1,
       "Expected one signature request for the cosigner public key."
     )
+    t.is(cosignerResponse.body[0].hash, sha256(urlFormattedRequest))
     t.true(cosignerResponse.body[0].request_uri.startsWith(urlFormattedRequest + "&callback="))
     t.is(cosignerResponse.body[0]._embedded.signers.length, 2)
     t.is(
