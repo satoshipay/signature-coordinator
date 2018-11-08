@@ -1,27 +1,30 @@
 import { EventStream } from "http-event-stream"
 
-import { serializeSignatureRequest, SignatureRequest } from "../models/signature-request"
-import { serializeSigner, Signer } from "../models/signer"
+import { serializeSignatureRequest, SerializedSignatureRequest } from "../models/signature-request"
+import { serializeSigner } from "../models/signer"
 import { notifications } from "../notifications"
 
 function sendEvent(
   eventStream: EventStream,
   eventName: string,
-  signatureRequest: SignatureRequest,
-  signers: Signer[]
+  timestamp: string | number,
+  data: any
 ) {
   eventStream.sendMessage({
     event: eventName,
-    id: String(new Date(signatureRequest.created_at).getTime()),
-    data: JSON.stringify(serializeSignatureRequest(signatureRequest, signers.map(serializeSigner)))
+    id: String(new Date(timestamp).getTime()),
+    data: JSON.stringify(data)
   })
 }
 
 export async function streamSignatureRequests(
   eventStream: EventStream,
   subscribedAccountIDs: string[],
-  lastEventID?: string
+  lastEventID?: string,
+  prepareSerializedSignatureRequest?: (serialized: SerializedSignatureRequest) => any
 ) {
+  const prepareRequest = prepareSerializedSignatureRequest || (serialized => serialized)
+
   if (lastEventID) {
     // FIXME: Query signature requests since `lastEventID` time
   }
@@ -29,19 +32,28 @@ export async function streamSignatureRequests(
   notifications.on("signature-request:new", ({ signatureRequest, signers }) => {
     const signer = signers.find(someSigner => subscribedAccountIDs.includes(someSigner.account_id))
     if (signer) {
-      sendEvent(eventStream, "signature-request", signatureRequest, signers)
+      const data = prepareRequest(
+        serializeSignatureRequest(signatureRequest, signers.map(serializeSigner))
+      )
+      sendEvent(eventStream, "signature-request", signatureRequest.created_at, data)
     }
   })
   notifications.on("signature-request:updated", ({ signatureRequest, signers }) => {
     const signer = signers.find(someSigner => subscribedAccountIDs.includes(someSigner.account_id))
     if (signer) {
-      sendEvent(eventStream, "signature-request:updated", signatureRequest, signers)
+      const data = prepareRequest(
+        serializeSignatureRequest(signatureRequest, signers.map(serializeSigner))
+      )
+      sendEvent(eventStream, "signature-request:updated", signatureRequest.created_at, data)
     }
   })
   notifications.on("signature-request:submitted", ({ signatureRequest, signers }) => {
     const signer = signers.find(someSigner => subscribedAccountIDs.includes(someSigner.account_id))
     if (signer) {
-      sendEvent(eventStream, "signature-request:submitted", signatureRequest, signers)
+      const data = prepareRequest(
+        serializeSignatureRequest(signatureRequest, signers.map(serializeSigner))
+      )
+      sendEvent(eventStream, "signature-request:submitted", signatureRequest.created_at, data)
     }
   })
 }

@@ -9,6 +9,7 @@ import { querySignatureRequests } from "./endpoints/query-signature-requests"
 import { streamSignatureRequests } from "./endpoints/stream-signature-requests"
 import { handleSignatureRequestSubmission } from "./endpoints/submit-signature-request"
 import { patchSignatureRequestURIParameters } from "./lib/sep-0007"
+import { SerializedSignatureRequest } from "./models/signature-request"
 
 function urlJoin(baseURL: string, path: string) {
   if (baseURL.charAt(baseURL.length - 1) === "/" && path.charAt(0) === "/") {
@@ -24,6 +25,16 @@ export default function createRouter(config: Config) {
   const createHRef = (path: string) => urlJoin(config.baseUrl, path)
   const router = new Router()
 
+  function prepareSignatureRequest(serialized: SerializedSignatureRequest) {
+    const collateURL = createHRef(`/signatures/collate/${serialized.hash}`)
+    return {
+      ...serialized,
+      request_uri: patchSignatureRequestURIParameters(serialized.request_uri, {
+        callback: `url:${collateURL}`
+      })
+    }
+  }
+
   router.use(
     BodyParser({
       urlencoded: true
@@ -36,16 +47,7 @@ export default function createRouter(config: Config) {
     const limit = query.limit ? Number.parseInt(query.limit, 10) : undefined
 
     const serializedSignatureRequests = await querySignatureRequests(accountIDs, { cursor, limit })
-
-    response.body = serializedSignatureRequests.map(serialized => {
-      const collateURL = createHRef(`/signatures/collate/${serialized.hash}`)
-      return {
-        ...serialized,
-        request_uri: patchSignatureRequestURIParameters(serialized.request_uri, {
-          callback: `url:${collateURL}`
-        })
-      }
-    })
+    response.body = serializedSignatureRequests.map(prepareSignatureRequest)
   })
 
   router.post("/submit", async ({ request, response }) => {
@@ -69,7 +71,12 @@ export default function createRouter(config: Config) {
     const accountIDs = context.params.accountIDs.split(",") as string[]
     const eventStream = createEventStream(context.res)
 
-    streamSignatureRequests(eventStream, accountIDs, context.request.get("Last-Event-ID"))
+    streamSignatureRequests(
+      eventStream,
+      accountIDs,
+      context.request.get("Last-Event-ID"),
+      prepareSignatureRequest
+    )
 
     // Don't close the request/stream after handling the route!
     context.respond = false

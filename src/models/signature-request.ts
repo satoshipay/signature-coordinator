@@ -19,6 +19,8 @@ export type NewSignatureRequest = Omit<
   "created_at" | "updated_at" | "completed_at"
 >
 
+export type SerializedSignatureRequest = ReturnType<typeof serializeSignatureRequest>
+
 interface QueryOptions {
   cursor?: number
   limit?: number
