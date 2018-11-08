@@ -44,7 +44,7 @@
     "axios": "^0.18.0",
     "envfefe": "^1.2.0",
     "http-errors": "^1.7.1",
-    "http-event-stream": "^0.1.1",
+    "http-event-stream": "^0.1.2",
     "kcors": "^2.2.2",
     "koa": "^2.3.0",
     "koa-body": "^4.0.4",
