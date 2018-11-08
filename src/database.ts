@@ -1,4 +1,4 @@
-import { Pool, PoolClient } from "pg"
+import { Pool, PoolClient, types as pgTypes } from "pg"
 import createPostgresSubscriber from "pg-listen"
 import config from "./config"
 
@@ -13,6 +13,13 @@ export const notificationsSubscription = createPostgresSubscriber({
 notificationsSubscription.events.on("error", (error: Error) => {
   console.error("Fatal postgres notification subscription error:", error)
   process.exit(1)
+})
+
+const TIMESTAMP_OID = 1114
+
+// Parse timestamps as UTC timestamps
+pgTypes.setTypeParser(TIMESTAMP_OID, (value: string | null) => {
+  return value === null ? null : new Date(value + " UTC")
 })
 
 export async function connectToDatabase() {
