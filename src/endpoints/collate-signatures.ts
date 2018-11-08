@@ -24,17 +24,17 @@ async function submitToHorizon(horizon: Server, tx: Transaction) {
   try {
     return await horizon.submitTransaction(tx)
   } catch (error) {
-    throw createError(
-      400,
-      "Transaction submission to horizon failed." +
-        "\nResponse: " +
-        JSON.stringify(error.response.data, null, 2) +
-        "\nTx XDR: " +
-        tx
-          .toEnvelope()
-          .toXDR()
-          .toString("base64")
-    )
+    const base64XDR = tx
+      .toEnvelope()
+      .toXDR()
+      .toString("base64")
+
+    throw createError(400, "Transaction submission to horizon failed.", {
+      data: {
+        response: error.response.data,
+        base64XDR
+      }
+    })
   }
 }
 
