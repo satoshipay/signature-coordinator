@@ -17,12 +17,10 @@ export async function querySignatureRequests(
   const signatureRequests = await querySignatureRequestsBySigner(database, accountIDs, queryOptions)
 
   const signatureRequestsSerialized = await Promise.all(
-    signatureRequests.map(async signatureRequest => ({
-      signatureRequest: serializeSignatureRequest(signatureRequest),
-      signers: (await queryAllSignatureRequestSigners(database, signatureRequest.id)).map(signer =>
-        serializeSigner(signer)
-      )
-    }))
+    signatureRequests.map(async signatureRequest => {
+      const signers = await queryAllSignatureRequestSigners(database, signatureRequest.id)
+      return serializeSignatureRequest(signatureRequest, signers.map(serializeSigner))
+    })
   )
 
   return signatureRequestsSerialized

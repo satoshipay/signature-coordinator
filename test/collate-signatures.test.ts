@@ -109,6 +109,5 @@ test("can submit a co-sig request and collate a 2nd signature", async t =>
     const streamedEvents = eventStreamRecording.stop()
     t.is(streamedEvents.length, 1)
 
-    t.truthy(streamedEvents[0].data.signatureRequest)
-    t.is(streamedEvents[0].data.signatureRequest.hash, submissionResponse.body.hash)
+    t.is(streamedEvents[0].data.hash, submissionResponse.body.hash)
   }))

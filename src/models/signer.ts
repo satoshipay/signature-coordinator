@@ -6,6 +6,8 @@ export interface Signer {
   has_signed: boolean
 }
 
+export type SerializedSigner = ReturnType<typeof serializeSigner>
+
 export function serializeSigner(signer: Signer) {
   return {
     account_id: signer.account_id,

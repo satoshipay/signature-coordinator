@@ -38,15 +38,12 @@ export default function createRouter(config: Config) {
     const serializedSignatureRequests = await querySignatureRequests(accountIDs, { cursor, limit })
 
     response.body = serializedSignatureRequests.map(serialized => {
-      const collateURL = createHRef(`/signatures/collate/${serialized.signatureRequest.hash}`)
+      const collateURL = createHRef(`/signatures/collate/${serialized.hash}`)
       return {
-        ...serialized.signatureRequest,
-        request_uri: patchSignatureRequestURIParameters(serialized.signatureRequest.request_uri, {
+        ...serialized,
+        request_uri: patchSignatureRequestURIParameters(serialized.request_uri, {
           callback: `url:${collateURL}`
-        }),
-        _embedded: {
-          signers: serialized.signers
-        }
+        })
       }
     })
   })

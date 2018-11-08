@@ -11,9 +11,9 @@ async function seed(database: Pool) {
     {
       id: "c6acda04-8bad-4b21-8e04-f6756626f66f",
       hash: "5ff3c444485038e077ab02102ea0915ab6f6be9a44ca95d9115010767e2a6ed2",
-      created_at: new Date(),
-      updated_at: new Date(),
-      completed_at: new Date(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
       designated_coordinator: true,
       request_uri:
         "web+stellar:tx?xdr=AAAAAL6Qe0ushP7lzogR2y3vyb8LKiorvD1U2KIlfs1wRBliAAAAZAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAABEz4bSpWmsmrXcIVAkY2hM3VdeCBJse56M18LaGzHQUAAAAAAAAAAACadvgAAAAAAAAAAA",
@@ -22,9 +22,9 @@ async function seed(database: Pool) {
     {
       id: "ae4fb902-f02a-4f3f-b5d1-c9221b7cb40c",
       hash: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110757",
-      created_at: new Date(),
-      updated_at: new Date(),
-      completed_at: new Date(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
       designated_coordinator: true,
       request_uri:
         "web+stellar:tx?xdr=AAAAAP+yw+ZEuNg533pUmwlYxfrq6/BoMJqiJ8vuQhf6rHWmAAAAZAB8NHAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAA/7LD5kS42DnfelSbCVjF+urr8GgwmqIny+5CF/qsdaYAAAAAAAAAAACYloAAAAAAAAAAAA",

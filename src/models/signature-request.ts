@@ -1,4 +1,5 @@
 import { DBClient } from "../database"
+import { SerializedSigner } from "./signer"
 
 type Omit<T, K extends keyof any> = Pick<T, Exclude<keyof T, K>>
 
@@ -23,13 +24,19 @@ interface QueryOptions {
   limit?: number
 }
 
-export function serializeSignatureRequest(signatureRequest: SignatureRequest) {
+export function serializeSignatureRequest(
+  signatureRequest: SignatureRequest,
+  signers: SerializedSigner[]
+) {
   return {
     hash: signatureRequest.hash,
     request_uri: signatureRequest.request_uri,
     created_at: signatureRequest.created_at,
     updated_at: signatureRequest.updated_at,
-    completed_at: signatureRequest.completed_at
+    completed_at: signatureRequest.completed_at,
+    _embedded: {
+      signers
+    }
   }
 }
 

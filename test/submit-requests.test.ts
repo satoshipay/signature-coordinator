@@ -101,11 +101,11 @@ test("can submit a co-signature request", async t =>
     const streamedEvents = eventStreamRecording.stop()
     t.is(streamedEvents.length, 1, "Expected one streamed event to be recorded.")
 
+    t.is(typeof streamedEvents[0].data, "object")
     t.true(
-      streamedEvents[0].data.signatureRequest &&
-        typeof streamedEvents[0].data.signatureRequest === "object"
+      streamedEvents[0].data._embedded.signers &&
+        Array.isArray(streamedEvents[0].data._embedded.signers)
     )
-    t.true(streamedEvents[0].data.signers && Array.isArray(streamedEvents[0].data.signers))
   }))
 
 test("signature request submission is idempotent", async t =>
