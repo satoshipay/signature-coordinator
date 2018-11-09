@@ -1,0 +1,192 @@
+# Javascript Node CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-javascript/ for more details
+#
+
+# Set up some defaults to make things cleaner
+# Note that "defaults" is *not* magic
+defaults: &defaults
+  working_directory: /tmp/workspace
+  docker:
+    - image: circleci/node:8
+enable_job_on_tags: &enable_job_on_tags
+  filters:
+    tags:
+      only: /^v\d+\.\d+\.\d+.*/
+
+version: 2
+jobs:
+  checkout_code:
+    <<: *defaults
+    steps:
+      # Checkout the repo and save the cache to enable parallel workflows
+      - checkout
+      - run:
+          name: Save git hash
+          command: git describe --always > .version
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - .version
+            - test.env
+            - docker
+            - package.json
+            - package-lock.json
+            - tsconfig.json
+            - tslint.json
+            - src
+            - test
+
+  bundle_dependencies:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "package-lock.json" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+
+      - run:
+          name: Configure NPM token and registry
+          command: echo -e "registry=https://registry.npmjs.org/\n//registry.npmjs.org/:_authToken=\${NPM_AUTH_TOKEN}\n@satoshipay:registry=https://registry.npmjs.org/" > ~/.npmrc
+      - run:
+          name: Install dependencies
+          command: npm install --silent --no-save
+
+      - save_cache:
+          paths:
+            - node_modules
+          key: v1-dependencies-{{ checksum "package-lock.json" }}
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - node_modules
+
+  lint:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Verify formatting
+          command: npm run prettier
+      - run:
+          name: Lint
+          command: npm run lint
+
+  build:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Build
+          command: npm run build
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - build
+
+  test:
+    <<: *defaults
+    docker:
+      - image: circleci/node:8
+      - image: postgres:11.0-alpine
+        environment:
+          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: postgres
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - setup_remote_docker
+      - run:
+          name: Create CI test report directory
+          command: mkdir /tmp/reports
+      - run:
+          name: Install environment variables
+          command: cp test.env .env
+      - run:
+          name: Seed database
+          command: cat migrations/*.sql | docker run --rm -i postgres:11.0-alpine psql 'postgres://postgres:postgres@localhost:5432/postgres'
+      - run:
+          name: Run tests
+          command: npm run test:ci
+      - store_artifacts:
+          path: /tmp/reports
+          prefix: tests
+      - store_test_results:
+          path: /tmp/reports
+
+  docker_push_master:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - setup_remote_docker
+      - run:
+          name: Build docker image and push to master tag
+          command: |
+            docker login -u $DOCKER_USER -p $DOCKER_PASS
+            ./docker/buildImage.sh -r satoshipay/signature-coordinator -t master -n $NPM_AUTH_TOKEN
+            docker push satoshipay/signature-coordinator:master
+
+  docker_push_release:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - setup_remote_docker
+      - run:
+          name: Build docker image and push to release tag
+          command: |
+            docker login -u $DOCKER_USER -p $DOCKER_PASS
+            ./docker/buildImage.sh -r satoshipay/signature-coordinator -t $CIRCLE_TAG -n $NPM_AUTH_TOKEN
+            docker push satoshipay/signature-coordinator:$CIRCLE_TAG
+
+workflows:
+  version: 2
+  build-and-test:
+    jobs:
+      - checkout_code:
+          <<: *enable_job_on_tags
+      - bundle_dependencies:
+          context: org-global
+          <<: *enable_job_on_tags
+          requires:
+            - checkout_code
+      - lint:
+          requires:
+            - bundle_dependencies
+          <<: *enable_job_on_tags
+      - build:
+          requires:
+            - bundle_dependencies
+          <<: *enable_job_on_tags
+      - test:
+          requires:
+            - checkout_code
+            - bundle_dependencies
+          <<: *enable_job_on_tags
+      - docker_push_master:
+          context: org-global
+          requires:
+            - lint
+            - test
+            - build
+          filters:
+            branches:
+              only: master
+      - docker_push_release:
+          context: org-global
+          requires:
+            - lint
+            - test
+            - build
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v\d+\.\d+\.\d+.*/
