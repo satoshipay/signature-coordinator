@@ -34,6 +34,7 @@ jobs:
             - package-lock.json
             - tsconfig.json
             - tslint.json
+            - migrations
             - src
             - test
 
@@ -94,7 +95,7 @@ jobs:
     <<: *defaults
     docker:
       - image: circleci/node:8
-      - image: postgres:11.0-alpine
+      - image: circleci/postgres:11.0-alpine
         environment:
           POSTGRES_DB: postgres
           POSTGRES_PASSWORD: postgres
@@ -109,8 +110,11 @@ jobs:
           name: Install environment variables
           command: cp test.env .env
       - run:
+          name: Install postgres client
+          command: sudo apt install -y postgresql-client || true
+      - run:
           name: Seed database
-          command: cat migrations/*.sql | docker run --rm -i postgres:11.0-alpine psql 'postgres://postgres:postgres@localhost:5432/postgres'
+          command: cat migrations/*.sql | psql 'postgres://postgres:postgres@localhost:5432/postgres'
       - run:
           name: Run tests
           command: npm run test:ci
