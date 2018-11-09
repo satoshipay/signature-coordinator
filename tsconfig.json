@@ -2,7 +2,7 @@
   "compilerOptions": {
     "outDir": "./build",
     "allowJs": false,
-    "lib": ["es2015", "es2016", "es2017", "es2017.object"],
+    "lib": ["dom", "es2015", "es2016", "es2017", "es2017.object"],
     "module": "commonjs",
     "target": "ES6",
     "strict": true,
