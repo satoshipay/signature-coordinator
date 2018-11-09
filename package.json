@@ -15,7 +15,9 @@
     "lint:fix": "tslint --fix --project . 'src/**/*.ts'",
     "prettier": "prettier --list-different '{src,test}/**/*.{md,ts,tsx,js,json}'",
     "prettier:fix": "prettier --write '{src,test}/**/*.{md,ts,tsx,js,json}'",
-    "test": "ava-ts"
+    "test": "ava-ts",
+    "posttest": "npm run lint",
+    "test:ci": "ava-ts"
   },
   "ava": {
     "files": [
