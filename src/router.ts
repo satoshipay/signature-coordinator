@@ -3,6 +3,7 @@ import { createEventStream } from "http-event-stream"
 import BodyParser from "koa-body"
 import Router from "koa-router"
 
+import pkg from "../package.json"
 import { Config } from "./config"
 import { collateSignatures } from "./endpoints/collate-signatures"
 import { querySignatureRequests } from "./endpoints/query-signature-requests"
@@ -84,6 +85,13 @@ export default function createRouter(config: Config) {
 
   router.get("/status/live", ctx => {
     ctx.status = 200
+  })
+
+  router.get("/", ctx => {
+    ctx.body = {
+      name: pkg.name,
+      version: pkg.version
+    }
   })
 
   return router
