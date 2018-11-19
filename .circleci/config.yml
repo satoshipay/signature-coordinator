@@ -134,7 +134,7 @@ jobs:
           name: Build docker image and push to master tag
           command: |
             docker login -u $DOCKER_USER -p $DOCKER_PASS
-            ./docker/buildImage.sh -r satoshipay/signature-coordinator -t master -n $NPM_AUTH_TOKEN
+            ./docker/build-image.sh -r satoshipay/signature-coordinator -t master
             docker push satoshipay/signature-coordinator:master
 
   docker_push_release:
@@ -147,7 +147,7 @@ jobs:
           name: Build docker image and push to release tag
           command: |
             docker login -u $DOCKER_USER -p $DOCKER_PASS
-            ./docker/buildImage.sh -r satoshipay/signature-coordinator -t $CIRCLE_TAG -n $NPM_AUTH_TOKEN
+            ./docker/build-image.sh -r satoshipay/signature-coordinator -t $CIRCLE_TAG
             docker push satoshipay/signature-coordinator:$CIRCLE_TAG
 
 workflows:

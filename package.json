@@ -42,7 +42,6 @@
   },
   "dependencies": {
     "@godaddy/terminus": "^2.4.1",
-    "@satoshipay/koa-error-response": "^0.2.1",
     "axios": "^0.18.0",
     "envfefe": "^1.2.0",
     "http-errors": "^1.7.1",
