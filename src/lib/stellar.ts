@@ -86,9 +86,15 @@ export function hasSufficientSignatures(
   return sum(effectiveSignatureWeights) >= threshold
 }
 
+function containsSignature(haystack: xdr.DecoratedSignature[], needle: xdr.DecoratedSignature) {
+  const bufferHaystack = haystack.map(signature => signature.toXDR())
+  const bufferNeedle = needle.toXDR()
+  return bufferHaystack.some(buffer => buffer.equals(bufferNeedle))
+}
+
 export function collateTransactionSignatures(
   tx: Transaction,
-  additionalSignaturesBase64: string[]
+  additionalSignatures: xdr.DecoratedSignature[]
 ) {
   const collatedTx = new Transaction(
     tx
@@ -97,15 +103,13 @@ export function collateTransactionSignatures(
       .toString("base64")
   )
 
-  const prevSignaturesBase64 = tx.signatures.map(signature => signature.toXDR().toString("base64"))
-  const newSignaturesBase64 = additionalSignaturesBase64.filter(
-    signatureBase64 => !prevSignaturesBase64.includes(signatureBase64)
+  const prevSignatures = tx.signatures
+  const newSignatures = additionalSignatures.filter(
+    signature => !containsSignature(prevSignatures, signature)
   )
 
-  for (const signatureBase64 of newSignaturesBase64) {
-    const signatureBuffer = Buffer.from(signatureBase64, "base64")
-    const decoratedSignature = (xdr.DecoratedSignature as any).fromXDR(signatureBuffer)
-    collatedTx.signatures.push(decoratedSignature)
+  for (const newSignature of newSignatures) {
+    collatedTx.signatures.push(newSignature)
   }
 
   return collatedTx
