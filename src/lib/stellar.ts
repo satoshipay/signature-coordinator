@@ -71,7 +71,7 @@ export function signatureMatchesPublicKey(
   const hint = (signature as SignatureWithHint).hint()
   const keypair = Keypair.fromPublicKey(publicKey)
 
-  return hint.equals(keypair.rawPublicKey().slice(-hint.byteLength))
+  return hint.equals(keypair.signatureHint() as Buffer)
 }
 
 export function hasSufficientSignatures(
