@@ -10,7 +10,8 @@ import {
   hasSufficientSignatures,
   networkPassphrases,
   selectStellarNetwork,
-  signatureMatchesPublicKey
+  signatureMatchesPublicKey,
+  verifySignatures
 } from "../lib/stellar"
 import {
   markSignatureRequestAsCompleted,
@@ -38,13 +39,17 @@ async function submitToHorizon(horizon: Server, tx: Transaction) {
   }
 }
 
+function txContainsSignatureOf(tx: Transaction, accountID: string) {
+  return tx.signatures.some(signature => signatureMatchesPublicKey(signature, accountID))
+}
+
 async function updateSignatureRequest(
   signatureRequest: SignatureRequest,
   collatedTx: Transaction,
   allSignerAccountIDs: string[]
 ) {
-  const newSignaturesAccountIDs = allSignerAccountIDs.filter(accountID =>
-    collatedTx.signatures.some(signature => signatureMatchesPublicKey(signature, accountID))
+  const updatedSignaturesAccountIDs = allSignerAccountIDs.filter(accountID =>
+    txContainsSignatureOf(collatedTx, accountID)
   )
 
   const updatedRequestURI = patchSignatureRequestURIParameters(signatureRequest.request_uri, {
@@ -57,7 +62,7 @@ async function updateSignatureRequest(
   await transaction(async client => {
     await Promise.all([
       updateSignatureRequestURI(client, signatureRequest.id, updatedRequestURI),
-      setSignersHasSignedFlags(client, signatureRequest.id, newSignaturesAccountIDs)
+      setSignersHasSignedFlags(client, signatureRequest.id, updatedSignaturesAccountIDs)
     ])
   })
 }
@@ -70,16 +75,18 @@ export async function collateSignatures(signatureRequestHash: string, txXDR: str
     throw createError(404, `Signature request not found: ${signatureRequestHash}`)
   }
 
+  const signers = await queryAllSignatureRequestSigners(database, signatureRequest.id)
+  const signerAccountIDs = signers.map(signer => signer.account_id)
+
+  verifySignatures(inputTx, signerAccountIDs)
+
   const signatureRequestParams = parseRequestURI(signatureRequest.request_uri).parameters
-  const updatedSignaturesBase64 = inputTx.signatures.map(signature =>
-    signature.toXDR().toString("base64")
-  )
 
   await selectStellarNetwork(
     signatureRequestParams.network_passphrase || networkPassphrases.mainnet
   )
 
-  const collatedTx = collateTransactionSignatures(inputTx, updatedSignaturesBase64)
+  const collatedTx = collateTransactionSignatures(inputTx, inputTx.signatures)
   const horizon = getHorizon(
     signatureRequestParams.network_passphrase || networkPassphrases.mainnet
   )
@@ -94,7 +101,6 @@ export async function collateSignatures(signatureRequestHash: string, txXDR: str
     collatedTx,
     allSigners.map(signer => signer.account_id)
   )
-  const signers = await queryAllSignatureRequestSigners(database, signatureRequest.id)
 
   await notifySignatureRequestUpdated({
     signatureRequest,

@@ -12,7 +12,8 @@ import {
   getHorizon,
   hasSufficientSignatures,
   networkPassphrases,
-  signatureMatchesPublicKey
+  signatureMatchesPublicKey,
+  verifySignatures
 } from "../lib/stellar"
 import { saveSigner, Signer } from "../models/signer"
 import { createSignatureRequest } from "../models/signature-request"
@@ -65,6 +66,8 @@ export async function handleSignatureRequestSubmission(requestURI: string) {
   if (sourceAccounts.every(account => hasSufficientSignatures(account, tx.signatures))) {
     throw createError(400, "Transaction is already sufficiently signed.")
   }
+
+  verifySignatures(tx, requiredSigners)
 
   const { signatureRequest, signers } = await transaction(async client => {
     const sigRequest = await createSignatureRequest(client, {
