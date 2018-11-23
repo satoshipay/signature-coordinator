@@ -2,6 +2,10 @@ import { AccountResponse, Keypair, Network, Server, Transaction, xdr } from "ste
 
 import { horizonServers } from "../config"
 
+interface DecoratedSignature extends xdr.DecoratedSignature {
+  signature(): Buffer
+}
+
 interface SignatureWithHint extends xdr.DecoratedSignature {
   hint(): Buffer
 }
@@ -84,6 +88,23 @@ export function hasSufficientSignatures(
     .map(signer => signer.weight)
 
   return sum(effectiveSignatureWeights) >= threshold
+}
+
+export function verifySignatures(tx: Transaction, signerAccountIDs: string[]) {
+  for (const signature of tx.signatures as DecoratedSignature[]) {
+    const signerPublicKey = signerAccountIDs.find(accountID =>
+      signatureMatchesPublicKey(signature, accountID)
+    )
+    if (!signerPublicKey) {
+      throw new Error(
+        `Transaction signature verification failed. Found a signature from an unexpected signer.`
+      )
+    }
+    const signerKeypair = Keypair.fromPublicKey(signerPublicKey)
+    if (!signerKeypair.verify(tx.hash(), signature.signature())) {
+      throw new Error(`Invalid signature: ${signature.toXDR().toString("base64")}`)
+    }
+  }
 }
 
 function containsSignature(haystack: xdr.DecoratedSignature[], needle: xdr.DecoratedSignature) {

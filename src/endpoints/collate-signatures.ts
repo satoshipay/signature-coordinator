@@ -10,7 +10,8 @@ import {
   hasSufficientSignatures,
   networkPassphrases,
   selectStellarNetwork,
-  signatureMatchesPublicKey
+  signatureMatchesPublicKey,
+  verifySignatures
 } from "../lib/stellar"
 import {
   markSignatureRequestAsCompleted,
@@ -74,6 +75,11 @@ export async function collateSignatures(signatureRequestHash: string, txXDR: str
     throw createError(404, `Signature request not found: ${signatureRequestHash}`)
   }
 
+  const signers = await queryAllSignatureRequestSigners(database, signatureRequest.id)
+  const signerAccountIDs = signers.map(signer => signer.account_id)
+
+  verifySignatures(inputTx, signerAccountIDs)
+
   const signatureRequestParams = parseRequestURI(signatureRequest.request_uri).parameters
 
   await selectStellarNetwork(
@@ -95,7 +101,6 @@ export async function collateSignatures(signatureRequestHash: string, txXDR: str
     collatedTx,
     allSigners.map(signer => signer.account_id)
   )
-  const signers = await queryAllSignatureRequestSigners(database, signatureRequest.id)
 
   await notifySignatureRequestUpdated({
     signatureRequest,
