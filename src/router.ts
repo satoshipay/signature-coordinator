@@ -3,7 +3,6 @@ import { createEventStream } from "http-event-stream"
 import BodyParser from "koa-body"
 import Router from "koa-router"
 
-import pkg from "../package.json"
 import { Config } from "./config"
 import { collateSignatures } from "./endpoints/collate-signatures"
 import { querySignatureRequests } from "./endpoints/query-signature-requests"
@@ -11,6 +10,9 @@ import { streamSignatureRequests } from "./endpoints/stream-signature-requests"
 import { handleSignatureRequestSubmission } from "./endpoints/submit-signature-request"
 import { patchSignatureRequestURIParameters } from "./lib/sep-0007"
 import { SerializedSignatureRequest } from "./models/signature-request"
+
+// tslint:disable-next-line
+const pkg = require("../package.json") as any
 
 function urlJoin(baseURL: string, path: string) {
   if (baseURL.charAt(baseURL.length - 1) === "/" && path.charAt(0) === "/") {
