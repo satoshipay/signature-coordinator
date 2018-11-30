@@ -1,5 +1,6 @@
 import { Pool, PoolClient, types as pgTypes } from "pg"
 import createPostgresSubscriber from "pg-listen"
+import { URL } from "url"
 import config from "./config"
 
 export type DBClient = Pool | PoolClient
@@ -24,9 +25,14 @@ pgTypes.setTypeParser(TIMESTAMP_OID, (value: string | null) => {
 
 export async function connectToDatabase() {
   try {
+    console.log("Checking database connection...")
     await Promise.all([database.connect(), notificationsSubscription.connect()])
+    await database.query("SELECT 1") // just to check if the connection works
+    console.log("Database connection ok.")
   } catch (error) {
-    throw new Error(`Cannot connect to database ${config.database}: ${error.message}`)
+    const url = new URL(config.database)
+    url.password = "*".repeat(url.password.length)
+    throw new Error(`Cannot connect to database ${url.toString()}: ${error.message}`)
   }
 }
 
