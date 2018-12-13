@@ -2,6 +2,7 @@ import { Pool, PoolClient, types as pgTypes } from "pg"
 import createPostgresSubscriber from "pg-listen"
 import { URL } from "url"
 import config from "./config"
+import { querySignatureRequestByHash } from "./models/signature-request"
 
 export type DBClient = Pool | PoolClient
 
@@ -27,7 +28,7 @@ export async function connectToDatabase() {
   try {
     console.log("Checking database connection...")
     await Promise.all([database.connect(), notificationsSubscription.connect()])
-    await database.query("SELECT 1") // just to check if the connection works
+    await querySignatureRequestByHash(database, "nonexistent") // just to check if the connection works
     console.log("Database connection ok.")
   } catch (error) {
     const url = new URL(config.database)
