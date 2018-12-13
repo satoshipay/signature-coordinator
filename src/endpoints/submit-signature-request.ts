@@ -12,6 +12,7 @@ import {
   getHorizon,
   hasSufficientSignatures,
   networkPassphrases,
+  selectStellarNetwork,
   signatureMatchesPublicKey,
   verifySignatures
 } from "../lib/stellar"
@@ -41,6 +42,8 @@ export async function handleSignatureRequestSubmission(requestURI: string) {
 
   const network = parameters.network_passphrase || networkPassphrases.mainnet
   const tx = parseTransactionXDR(parameters.xdr)
+
+  await selectStellarNetwork(network)
 
   const sourceAccounts = await Promise.all(
     getAllSources(tx).map(sourcePublicKey => getHorizon(network).loadAccount(sourcePublicKey))
