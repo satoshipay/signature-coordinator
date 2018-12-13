@@ -19,6 +19,8 @@ notificationsSubscription.events.on("error", (error: Error) => {
 
 const TIMESTAMP_OID = 1114
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 // Parse timestamps as UTC timestamps
 pgTypes.setTypeParser(TIMESTAMP_OID, (value: string | null) => {
   return value === null ? null : new Date(value + " UTC")
@@ -28,7 +30,12 @@ export async function connectToDatabase() {
   try {
     console.log("Checking database connection...")
     await Promise.all([database.connect(), notificationsSubscription.connect()])
-    await querySignatureRequestByHash(database, "nonexistent") // just to check if the connection works
+    await Promise.race([
+      querySignatureRequestByHash(database, "nonexistent"),
+      delay(2000).then(() => {
+        throw new Error("Database connection test query timed out.")
+      })
+    ])
     console.log("Database connection ok.")
   } catch (error) {
     const url = new URL(config.database)
