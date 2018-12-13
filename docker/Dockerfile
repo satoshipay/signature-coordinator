@@ -1,5 +1,5 @@
-ARG BUILDER=node:8
-ARG RUNNER=gcr.io/distroless/nodejs
+ARG BUILDER=node:10-alpine
+ARG RUNNER=node:10-alpine
 
 ## Builder
 FROM $BUILDER as builder
@@ -40,4 +40,4 @@ COPY --from=builder /app/node_modules /app/node_modules
 
 EXPOSE 3000
 
-CMD [ "build/index.js" ]
+CMD "node" "./build/index.js"
