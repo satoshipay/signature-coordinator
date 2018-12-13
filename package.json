@@ -1,6 +1,6 @@
 {
   "name": "@satoshipay/multisig-coordinator",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "author": "SatoshiPay",
   "license": "UNLICENSED",
   "main": "src/index.ts",
