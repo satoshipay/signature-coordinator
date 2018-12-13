@@ -28,6 +28,7 @@ ingress:
   enabled: true
   # e.g. frontend annotations from https://docs.traefik.io/configuration/backends/kubernetes/#general-annotations
   annotations:
+    kubernetes.io/ingress.class: traefik
   # host
   path: /signature-coordinator
 
