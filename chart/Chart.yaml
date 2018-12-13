@@ -1,0 +1,7 @@
+apiVersion: v1
+description: Signature Coordination Service
+name: signature-coordinator
+version: 0.0.1
+sources:
+  - https://github.com/satoshipay/signature-coordinator
+home: https://github.com/satoshipay/signature-coordinator

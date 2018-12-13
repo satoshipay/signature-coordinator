@@ -1,10 +1,17 @@
 import { parse, sanitize } from "envfefe"
 import { Server } from "stellar-sdk"
+import { URL } from "url"
 
 export type Config = ReturnType<typeof getConfig>
 
+function setPasswordInURL(urlString: string, password: string) {
+  const parsedDatabaseURL = new URL(urlString)
+  parsedDatabaseURL.password = password
+  return parsedDatabaseURL.toString()
+}
+
 function getConfig() {
-  return parse({
+  const parsedConfig = parse({
     baseUrl: {
       sanitize: sanitize.string
     },
@@ -22,6 +29,12 @@ function getConfig() {
       sanitize: sanitize.number
     }
   })
+
+  if (process.env.DATABASE_PASSWORD) {
+    parsedConfig.database = setPasswordInURL(parsedConfig.database, process.env.DATABASE_PASSWORD)
+  }
+
+  return parsedConfig
 }
 
 const config = getConfig()
