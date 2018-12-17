@@ -17,7 +17,7 @@
     "prettier:fix": "prettier --write '{src,test}/**/*.{md,ts,tsx,js,json}'",
     "test": "ava-ts",
     "posttest": "npm run lint",
-    "test:ci": "ava-ts"
+    "test:ci": "ava-ts --tap | tap-xunit > ava.xml"
   },
   "ava": {
     "files": [
