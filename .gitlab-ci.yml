@@ -33,12 +33,11 @@ test:
     POSTGRES_DB: postgres
     POSTGRES_PASSWORD: postgres
   before_script:
-    - apt install -y postgresql-client || true
-    - cat migrations/*.sql | psql 'postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}'
+    - apt update && apt install -y postgresql-client || true
     - cp test.env .env
+    - cat migrations/*.sql | psql "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}"
   services:
    - name: postgres:11.0-alpine
-     alias: db
   script:
     - npm run test:ci
   artifacts:
