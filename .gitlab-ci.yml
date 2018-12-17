@@ -1,0 +1,70 @@
+image: node:8
+
+stages:
+  - setup
+  - test
+  - build
+  - publish
+
+prepare:
+  stage: setup
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules
+  script:
+    - npm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
+    - npm install --no-save
+  artifacts:
+    paths:
+      - node_modules
+    expire_in: 1 hour
+
+lint:
+  stage: test
+  script:
+    - npm run prettier
+    - npm run lint
+
+test:
+  stage: test
+  variables:
+    POSTGRES_USER: postgres
+    POSTGRES_DB: postgres
+    POSTGRES_PASSWORD: postgres
+  before_script:
+    - apt install -y postgresql-client || true
+    - cat migrations/*.sql | psql 'postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}'
+    - cp test.env .env
+  services:
+   - name: postgres:11.0-alpine
+     alias: db
+  script:
+    - npm run test:ci
+  artifacts:
+    reports:
+      junit: ava.xml
+
+build:
+  stage: build
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - build
+    expire_in: 1 week
+
+publish:
+  stage: publish
+  image: docker:stable
+  variables:
+    DOCKER_HOST: tcp://localhost:2375
+    DOCKER_DRIVER: overlay2
+  services:
+    - docker:dind
+  script:
+    - export branch_or_tag=${CI_COMMIT_TAG:-CI_COMMIT_REF_SLUG}
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+    - docker pull $CI_REGISTRY_IMAGE:latest || true
+    - docker build --cache-from $CI_REGISTRY_IMAGE:latest --build-arg NPM_AUTH_TOKEN=$NPM_TOKEN --build-arg BUILD_HASH=$CI_COMMIT_SHA --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --tag $CI_REGISTRY_IMAGE:$branch_or_tag --tag $CI_REGISTRY_IMAGE:latest -f docker/Dockerfile .
+    - docker push $CI_REGISTRY_IMAGE
