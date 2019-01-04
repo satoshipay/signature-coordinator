@@ -22,7 +22,7 @@ export type NewSignatureRequest = Omit<
 export type SerializedSignatureRequest = ReturnType<typeof serializeSignatureRequest>
 
 interface QueryOptions {
-  cursor?: number
+  cursor?: string
   limit?: number
 }
 
@@ -112,12 +112,9 @@ export async function markSignatureRequestAsCompleted(client: DBClient, id: stri
 }
 
 export async function querySignatureRequestByHash(client: DBClient, hash: string) {
-  const { rows } = await client.query(
-    `
-    SELECT * FROM signature_requests WHERE hash = $1
-  `,
-    [hash.toLowerCase()]
-  )
+  const { rows } = await client.query(`SELECT * FROM signature_requests WHERE hash = $1`, [
+    hash.toLowerCase()
+  ])
   return rows.length > 0 ? (rows[0] as SignatureRequest) : null
 }
 
