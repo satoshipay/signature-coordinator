@@ -6,7 +6,7 @@ import {
 import { serializeSigner, queryAllSignatureRequestSigners } from "../models/signer"
 
 interface QueryOptions {
-  cursor?: number
+  cursor?: string
   limit?: number
 }
 

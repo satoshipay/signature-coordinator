@@ -1,5 +1,4 @@
 import createError from "http-errors"
-import { createEventStream } from "http-event-stream"
 import BodyParser from "koa-body"
 import Router from "koa-router"
 
@@ -46,7 +45,7 @@ export default function createRouter(config: Config) {
 
   router.get("/requests/:accountIDs", async ({ params, query, response }) => {
     const accountIDs = params.accountIDs.split(",")
-    const cursor = query.cursor ? Number.parseInt(query.cursor, 10) : undefined
+    const cursor = query.cursor || undefined
     const limit = query.limit ? Number.parseInt(query.limit, 10) : undefined
 
     const serializedSignatureRequests = await querySignatureRequests(accountIDs, { cursor, limit })
@@ -72,14 +71,8 @@ export default function createRouter(config: Config) {
 
   router.get("/stream/:accountIDs", async context => {
     const accountIDs = context.params.accountIDs.split(",") as string[]
-    const eventStream = createEventStream(context.res)
 
-    streamSignatureRequests(
-      eventStream,
-      accountIDs,
-      context.request.get("Last-Event-ID"),
-      prepareSignatureRequest
-    )
+    streamSignatureRequests(context.req, context.res, accountIDs, prepareSignatureRequest)
 
     // Don't close the request/stream after handling the route!
     context.respond = false

@@ -1,59 +1,96 @@
-import { EventStream } from "http-event-stream"
+import * as http from "http"
+import { streamEvents, StreamContext } from "http-event-stream"
 
-import { serializeSignatureRequest, SerializedSignatureRequest } from "../models/signature-request"
-import { serializeSigner } from "../models/signer"
+import {
+  serializeSignatureRequest,
+  SerializedSignatureRequest,
+  SignatureRequest
+} from "../models/signature-request"
+import { serializeSigner, Signer } from "../models/signer"
 import { notifications } from "../notifications"
+import { querySignatureRequests } from "./query-signature-requests"
 
-function sendEvent(
-  eventStream: EventStream,
-  eventName: string,
-  timestamp: string | number,
-  data: any
-) {
-  eventStream.sendMessage({
+interface NotificationPayload {
+  signatureRequest: SignatureRequest
+  signers: Signer[]
+}
+
+function createServerSentEvent(eventName: string, timestamp: string | number, data: any) {
+  return {
     event: eventName,
     id: String(new Date(timestamp).getTime()),
     data: JSON.stringify(data)
-  })
+  }
 }
 
 export async function streamSignatureRequests(
-  eventStream: EventStream,
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
   subscribedAccountIDs: string[],
-  lastEventID?: string,
   prepareSerializedSignatureRequest?: (serialized: SerializedSignatureRequest) => any
 ) {
   const prepareRequest = prepareSerializedSignatureRequest || (serialized => serialized)
 
-  if (lastEventID) {
-    // FIXME: Query signature requests since `lastEventID` time
+  const prepareEvent = (
+    eventName: string,
+    signatureRequest: SignatureRequest,
+    signers: Signer[]
+  ) => {
+    const serialized = serializeSignatureRequest(signatureRequest, signers.map(serializeSigner))
+    return createServerSentEvent(eventName, signatureRequest.created_at, prepareRequest(serialized))
   }
+  const someSignerMatches = (signers: Signer[], accountIDs: string[]) =>
+    signers.some(someSigner => accountIDs.includes(someSigner.account_id))
 
-  notifications.on("signature-request:new", ({ signatureRequest, signers }) => {
-    const signer = signers.find(someSigner => subscribedAccountIDs.includes(someSigner.account_id))
-    if (signer) {
-      const data = prepareRequest(
-        serializeSignatureRequest(signatureRequest, signers.map(serializeSigner))
-      )
-      sendEvent(eventStream, "signature-request", signatureRequest.created_at, data)
-    }
-  })
-  notifications.on("signature-request:updated", ({ signatureRequest, signers }) => {
-    const signer = signers.find(someSigner => subscribedAccountIDs.includes(someSigner.account_id))
-    if (signer) {
-      const data = prepareRequest(
-        serializeSignatureRequest(signatureRequest, signers.map(serializeSigner))
-      )
-      sendEvent(eventStream, "signature-request:updated", signatureRequest.created_at, data)
-    }
-  })
-  notifications.on("signature-request:submitted", ({ signatureRequest, signers }) => {
-    const signer = signers.find(someSigner => subscribedAccountIDs.includes(someSigner.account_id))
-    if (signer) {
-      const data = prepareRequest(
-        serializeSignatureRequest(signatureRequest, signers.map(serializeSigner))
-      )
-      sendEvent(eventStream, "signature-request:submitted", signatureRequest.created_at, data)
+  streamEvents(req, res, {
+    async fetch(lastEventId: string) {
+      const since = new Date(Number.parseInt(lastEventId, 10)).toISOString()
+      const serializedSignatureRequests = await querySignatureRequests(subscribedAccountIDs, {
+        cursor: since
+      })
+
+      return serializedSignatureRequests.map(serializedSignatureRequest => {
+        return createServerSentEvent(
+          "signature-request",
+          serializedSignatureRequest.created_at,
+          serializedSignatureRequest
+        )
+      })
+    },
+
+    stream(context: StreamContext) {
+      const onNewSignatureRequest = (payload: NotificationPayload) => {
+        if (someSignerMatches(payload.signers, subscribedAccountIDs)) {
+          context.sendEvent(
+            prepareEvent("signature-request", payload.signatureRequest, payload.signers)
+          )
+        }
+      }
+      const onUpdatedSignatureRequest = (payload: NotificationPayload) => {
+        if (someSignerMatches(payload.signers, subscribedAccountIDs)) {
+          context.sendEvent(
+            prepareEvent("signature-request:updated", payload.signatureRequest, payload.signers)
+          )
+        }
+      }
+      const onSubmittedSignatureRequest = (payload: NotificationPayload) => {
+        if (someSignerMatches(payload.signers, subscribedAccountIDs)) {
+          context.sendEvent(
+            prepareEvent("signature-request:submitted", payload.signatureRequest, payload.signers)
+          )
+        }
+      }
+
+      notifications.on("signature-request:new", onNewSignatureRequest)
+      notifications.on("signature-request:updated", onUpdatedSignatureRequest)
+      notifications.on("signature-request:submitted", onSubmittedSignatureRequest)
+
+      const unsubscribe = () => {
+        notifications.removeListener("signature-request:new", onNewSignatureRequest)
+        notifications.removeListener("signature-request:updated", onUpdatedSignatureRequest)
+        notifications.removeListener("signature-request:submitted", onSubmittedSignatureRequest)
+      }
+      return unsubscribe
     }
   })
 }
