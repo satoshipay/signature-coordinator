@@ -1,4 +1,4 @@
-image: node:8
+image: node:10
 
 variables:
   DOCKER_HUB_IMAGE: satoshipay/multisig-coordinator
@@ -11,13 +11,15 @@ stages:
 
 prepare:
   stage: setup
+  variables:
+    npm_config_cache: $CI_PROJECT_DIR/cache
   cache:
-    key: ${CI_COMMIT_REF_SLUG}
+    key: npm-${CI_COMMIT_REF_SLUG}
     paths:
-      - node_modules
+      - cache/
   script:
     - npm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
-    - npm install --no-save
+    - npm ci
   artifacts:
     paths:
       - node_modules
