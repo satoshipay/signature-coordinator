@@ -96,6 +96,8 @@ staging:
     - deploy
   only:
     kubernetes: active
+    refs:
+      - master
 
 production:
   stage: production
@@ -110,6 +112,8 @@ production:
   when: manual
   only:
     kubernetes: active
+    refs:
+      - master
 
 before_script:
   - |
