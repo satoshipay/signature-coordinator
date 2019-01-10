@@ -11,6 +11,7 @@ stages:
   - build
   - publish
   - staging
+  - production
 
 prepare:
   stage: setup
@@ -92,7 +93,21 @@ staging:
   script:
     - helm_init
     - create_secret
-    - deploy staging
+    - deploy
+  only:
+    kubernetes: active
+
+production:
+  stage: production
+  image: registry.satoshipay.tech/infrastructure/docker/helmfile:latest
+  environment:
+    name: production
+    url: https://signature-coordinator.satoshipay.tech
+  script:
+    - helm_init
+    - create_secret
+    - deploy
+  when: manual
   only:
     kubernetes: active
 
@@ -148,7 +163,7 @@ before_script:
             --set image.tag="$CI_APPLICATION_TAG" \
             --set postgresql.postgresqlPassword="$DATABASE_PASSWORD" \
             --set image.secrets[0].name="gitlab-registry" \
-            --set service.url="$CI_ENVIRONMENT_URL" \
+            --set ingress.baseURL="$CI_ENVIRONMENT_URL" \
             $name \
             chart/
       fi
