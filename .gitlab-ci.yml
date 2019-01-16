@@ -4,6 +4,7 @@ variables:
   DOCKER_HUB_IMAGE: satoshipay/multisig-coordinator
   CI_APPLICATION_TAG: $CI_COMMIT_SHA
   CI_APPLICATION_REPOSITORY: ${CI_REGISTRY_IMAGE}/${CI_COMMIT_REF_SLUG}
+  INGRESS_CLASS: nginx
 
 stages:
   - setup
@@ -102,6 +103,8 @@ staging:
 production:
   stage: production
   image: registry.satoshipay.tech/infrastructure/docker/helmfile:latest
+  variables:
+    INGRESS_CLASS: traefik
   environment:
     name: production
     url: https://multisig.satoshipay.io
@@ -146,6 +149,7 @@ before_script:
             --set image.secrets[0].name="gitlab-registry" \
             --set postgresql.postgresqlPassword="$DATABASE_PASSWORD" \
             --set ingress.baseURL="$CI_ENVIRONMENT_URL" \
+            --set ingress.annotations.kubernetes\\.io/ingress\\.class=$INGRESS_CLASS \
             --set application.migrate.run="true" \
             --set application.initialising="true" \
             $name \
@@ -168,6 +172,7 @@ before_script:
             --set postgresql.postgresqlPassword="$DATABASE_PASSWORD" \
             --set image.secrets[0].name="gitlab-registry" \
             --set ingress.baseURL="$CI_ENVIRONMENT_URL" \
+            --set ingress.annotations.kubernetes\\.io/ingress\\.class=$INGRESS_CLASS \
             $name \
             chart/
       fi
