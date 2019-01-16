@@ -10,6 +10,8 @@ stages:
   - test
   - build
   - publish
+  - staging
+  - production
 
 prepare:
   stage: setup
@@ -81,3 +83,94 @@ publish:
         docker login -u "$DOCKER_HUB_USER" -p "$DOCKER_HUB_PASSWORD"
         docker push $DOCKER_HUB_IMAGE
       fi
+
+staging:
+  stage: staging
+  image: registry.satoshipay.tech/infrastructure/docker/helmfile:latest
+  environment:
+    name: staging
+    url: https://signature-coordinator.staging.satoshipay.tech
+  script:
+    - helm_init
+    - create_secret
+    - deploy
+  only:
+    kubernetes: active
+    refs:
+      - master
+
+production:
+  stage: production
+  image: registry.satoshipay.tech/infrastructure/docker/helmfile:latest
+  environment:
+    name: production
+    url: https://signature-coordinator.satoshipay.tech
+  script:
+    - helm_init
+    - create_secret
+    - deploy
+  when: manual
+  only:
+    kubernetes: active
+    refs:
+      - master
+
+before_script:
+  - |
+    function helm_init () {
+      helm init --client-only --skip-refresh
+      helm dependency update chart/
+      helm dependency build chart/
+    }
+
+    function create_secret () {
+      kubectl create secret --namespace $KUBE_NAMESPACE \
+        docker-registry gitlab-registry \
+        --docker-server="$CI_REGISTRY" \
+        --docker-username="${CI_DEPLOY_USER:-$CI_REGISTRY_USER}" \
+        --docker-password="${CI_DEPLOY_PASSWORD:-$CI_REGISTRY_PASSWORD}" \
+        --docker-email="$GITLAB_USER_EMAIL" \
+        -o yaml --dry-run | kubectl replace -n "$KUBE_NAMESPACE" --force -f -
+    }
+
+    function deploy () {
+      name="$CI_PROJECT_NAME-$CI_ENVIRONMENT_SLUG"
+
+      if [[ -n "$DB_MIGRATE" || -z "$(helm ls -q "^$name$")" ]]; then
+        echo "Upgrading with DB migrations"
+
+        helm upgrade --install --wait \
+            --set releaseOverride="$CI_ENVIRONMENT_SLUG" \
+            --set image.repository="$CI_APPLICATION_REPOSITORY" \
+            --set image.tag="$CI_APPLICATION_TAG" \
+            --set image.secrets[0].name="gitlab-registry" \
+            --set postgresql.postgresqlPassword="$DATABASE_PASSWORD" \
+            --set ingress.baseURL="$CI_ENVIRONMENT_URL" \
+            --set application.migrate.run="true" \
+            --set application.initialising="true" \
+            $name \
+            chart/
+
+        echo "Redeploying without initialising"
+        helm upgrade --wait \
+          --reuse-values \
+          --set application.migrate.run="false" \
+          --set application.initialising="false" \
+          $name \
+          chart/
+      else
+        echo "Deploying new release"
+
+        helm upgrade --install --wait \
+            --set releaseOverride="$CI_ENVIRONMENT_SLUG" \
+            --set image.repository="$CI_APPLICATION_REPOSITORY" \
+            --set image.tag="$CI_APPLICATION_TAG" \
+            --set postgresql.postgresqlPassword="$DATABASE_PASSWORD" \
+            --set image.secrets[0].name="gitlab-registry" \
+            --set ingress.baseURL="$CI_ENVIRONMENT_URL" \
+            $name \
+            chart/
+      fi
+
+      kubectl rollout status -n "$KUBE_NAMESPACE" -w "deployment/$CI_ENVIRONMENT_SLUG"
+    }

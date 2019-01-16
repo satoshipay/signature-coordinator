@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "name" . }}-migrations
+  labels:
+    app: {{ template "appname" . }}
+    chart: {{ template "chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+data:
+  {{ range $path, $bytes := .Files.Glob "migrations/*" }}
+  {{ base $path | replace ":" "-" }}: '{{ $.Files.Get $path }}'
+  {{ end }}

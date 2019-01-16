@@ -1,19 +1,21 @@
+{{- if not .Values.application.initialising -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "signature-coordinator.fullname" . }}
+  name: {{ template "trackableappname" . }}
   labels:
-    app: {{ template "signature-coordinator.name" . }}
-    chart: {{ template "signature-coordinator.chart" . }}
+    app: {{ template "appname" . }}
+    track: "{{ .Values.application.track }}"
+    chart: {{ template "chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ template "signature-coordinator.name" . }}
+      app: {{ template "appname" . }}
+      track: {{ .Values.application.track }}
       release: {{ .Release.Name }}
-  # remove this key if it is unacceptable to have two instances *ever* running
   strategy:
     rollingUpdate:
       maxSurge: 35%
@@ -21,53 +23,52 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ template "signature-coordinator.name" . }}
+        app: {{ template "appname" . }}
+        track: {{ .Values.application.track }}
         release: {{ .Release.Name }}
     spec:
-      # Uncomment this to use mongo or redis (delete as appropriate)
-      # initContainers:
-      #   - name: init-mongo
-      #     image: mongo:3.2
-      #     command: ['sh', '-c', 'until mongo --eval "db.adminCommand(\"ping\")" --host {{ .Release.Name }}-mongodb; do echo "waiting for mongo"; sleep 2; done;']
+      imagePullSecrets:
+{{ toYaml .Values.image.secrets | indent 10 }}
+      initContainers:
+        - name: init-postgres
+          image: governmentpaas/psql
+          command: ['sh', '-c', 'until psql "postgresql://{{ .Values.postgresql.postgresqlUsername }}:{{ .Values.postgresql.postgresqlPassword }}@{{ .Release.Name }}-postgresql/{{ .Values.postgresql.postgresqlDatabase }}" -c "SELECT 1"; do echo "waiting for postgres"; sleep 2; done;']
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.application.secretName }}
+          envFrom:
+            - secretRef:
+                name: {{ . }}
+          {{- end }}
           env:
             - name: BASE_URL
-              value: {{ .Values.environment.baseUrl }}
+              value: {{ .Values.ingress.baseURL | trimSuffix "/" }}{{ .Values.ingress.path }}
 {{- if .Values.environment.databaseUrl }}
             - name: DATABASE
               value: {{ .Values.environment.databaseUrl }}
 {{- else }}
             - name: DATABASE
-              value: postgresql://{{ .Values.postgresql.postgresqlUsername }}:{{ default "xxxx" .Values.postgresql.postgresqlPassword }}@{{ .Release.Name }}-postgresql/{{ .Values.postgresql.postgresqlDatabase }}
-{{- end }}
-{{- if not .Values.postgresql.postgresqlPassword }}
-            - name: DATABASE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-postgresql
-                  key: postgresql-password
+              value: postgresql://{{ .Values.postgresql.postgresqlUsername }}:{{ .Values.postgresql.postgresqlPassword }}@{{ .Release.Name }}-postgresql/{{ .Values.postgresql.postgresqlDatabase }}
 {{- end }}
             - name: PORT
-              value: "3000"
+              value: {{ .Values.service.internalPort | quote }}
             - name: HORIZON
               value: {{ .Values.environment.mainnetHorizonUrl }}
             - name: HORIZON_TESTNET
               value: {{ .Values.environment.testnetHorizonUrl }}
           ports:
-            - name: http-api
-              containerPort: 3000
-              protocol: TCP
-          # livenessProbe:
-          #   httpGet:
-          #     path: {{ .Values.ingress.path | trimSuffix "/"}}/
-          #     port: http-api
-          # readinessProbe:
-          #   httpGet:
-          #     path: {{ .Values.ingress.path | trimSuffix "/"}}/
-          #     port: http-api
+            - name: {{ .Values.service.name | quote }}
+              containerPort: {{ .Values.service.internalPort }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.ingress.path | trimSuffix "/" }}/status/live
+              port: {{ .Values.service.internalPort }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.ingress.path | trimSuffix "/" }}/status/live
+              port: {{ .Values.service.internalPort }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
     {{- with .Values.nodeSelector }}
@@ -82,3 +83,4 @@ spec:
       tolerations:
 {{ toYaml . | indent 8 }}
     {{- end }}
+{{- end -}}
