@@ -104,7 +104,7 @@ production:
   image: registry.satoshipay.tech/infrastructure/docker/helmfile:latest
   environment:
     name: production
-    url: https://signature-coordinator.satoshipay.tech
+    url: https://multisig.satoshipay.io
   script:
     - helm_init
     - create_secret
