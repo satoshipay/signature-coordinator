@@ -78,13 +78,11 @@ export async function collateSignatures(signatureRequestHash: string, txXDR: str
   const signers = await queryAllSignatureRequestSigners(database, signatureRequest.id)
   const signerAccountIDs = signers.map(signer => signer.account_id)
 
-  verifySignatures(inputTx, signerAccountIDs)
-
   const signatureRequestParams = parseRequestURI(signatureRequest.request_uri).parameters
+  const network = signatureRequestParams.network_passphrase || networkPassphrases.mainnet
 
-  await selectStellarNetwork(
-    signatureRequestParams.network_passphrase || networkPassphrases.mainnet
-  )
+  selectStellarNetwork(network)
+  verifySignatures(inputTx, signerAccountIDs)
 
   const collatedTx = collateTransactionSignatures(inputTx, inputTx.signatures)
   const horizon = getHorizon(
