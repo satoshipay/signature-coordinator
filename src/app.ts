@@ -19,6 +19,7 @@ const ErrorMiddleware = () => async (ctx: Koa.Context, next: () => Promise<any>)
         }
       }
       ctx.response.body = body
+      ctx.response.status = error.status
     } else {
       // re-throw
       throw error
