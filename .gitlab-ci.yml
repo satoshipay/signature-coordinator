@@ -88,6 +88,7 @@ publish:
 staging:
   stage: staging
   image: registry.satoshipay.tech/infrastructure/docker/helmfile:latest
+  dependencies: []
   environment:
     name: staging
     url: https://signature-coordinator.staging.satoshipay.tech
@@ -102,6 +103,7 @@ staging:
 production:
   stage: production
   image: registry.satoshipay.tech/infrastructure/docker/helmfile:latest
+  dependencies: []
   variables:
     INGRESS_CLASS: traefik
   environment:
