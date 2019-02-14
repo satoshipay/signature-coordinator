@@ -93,7 +93,6 @@ staging:
     url: https://signature-coordinator.staging.satoshipay.tech
   script:
     - helm_init
-    - create_secret
     - deploy
   only:
     kubernetes: active
@@ -110,7 +109,6 @@ production:
     url: https://multisig.satoshipay.io
   script:
     - helm_init
-    - create_secret
     - deploy
   when: manual
   only:
@@ -124,16 +122,6 @@ before_script:
       helm init --client-only --skip-refresh
       helm dependency update chart/
       helm dependency build chart/
-    }
-
-    function create_secret () {
-      kubectl create secret --namespace $KUBE_NAMESPACE \
-        docker-registry gitlab-registry \
-        --docker-server="$CI_REGISTRY" \
-        --docker-username="${CI_DEPLOY_USER:-$CI_REGISTRY_USER}" \
-        --docker-password="${CI_DEPLOY_PASSWORD:-$CI_REGISTRY_PASSWORD}" \
-        --docker-email="$GITLAB_USER_EMAIL" \
-        -o yaml --dry-run | kubectl replace -n "$KUBE_NAMESPACE" --force -f -
     }
 
     function deploy () {
