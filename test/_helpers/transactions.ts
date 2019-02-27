@@ -15,12 +15,13 @@ export async function topup(publicKey: string) {
 
 export async function createTransaction(accountKeypair: Keypair, operations: xdr.Operation<any>[]) {
   const account = await horizon.loadAccount(accountKeypair.publicKey())
-  const txBuilder = new TransactionBuilder(account)
+  const txBuilder = new TransactionBuilder(account, { fee: 100 })
 
   for (const operation of operations) {
     txBuilder.addOperation(operation)
   }
 
+  txBuilder.setTimeout(60)
   const tx = txBuilder.build()
 
   Network.useTestNetwork()
