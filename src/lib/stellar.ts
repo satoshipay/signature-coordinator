@@ -1,4 +1,4 @@
-import { AccountResponse, Keypair, Network, Server, Transaction, xdr } from "stellar-sdk"
+import { Horizon, Keypair, Network, Server, Transaction, xdr } from "stellar-sdk"
 
 import { horizonServers } from "../config"
 
@@ -17,6 +17,9 @@ export const networkPassphrases = {
 
 const dedupe = <T>(array: T[]) => [...new Set(array)]
 const sum = (array: number[]) => array.reduce((total, element) => total + element, 0)
+
+const getSignerKey = (signer: Horizon.AccountSigner): string =>
+  (signer as any).key || signer.public_key
 
 export function getHorizon(networkPassphrase: string): Server {
   switch (networkPassphrase) {
@@ -51,14 +54,14 @@ export function getAllSources(tx: Transaction) {
   ])
 }
 
-export function getAllSigners(accounts: AccountResponse[]) {
+export function getAllSigners(accounts: Server.AccountResponse[]) {
   return accounts.reduce(
     (signers, sourceAccount) =>
       dedupe([
         ...signers,
         ...sourceAccount.signers
           .filter(signer => signer.weight > 0)
-          .map(signer => signer.public_key)
+          .map(signer => getSignerKey(signer))
       ]),
     [] as string[]
   )
@@ -75,7 +78,7 @@ export function signatureMatchesPublicKey(
 }
 
 export function hasSufficientSignatures(
-  account: AccountResponse,
+  account: Server.AccountResponse,
   signatures: xdr.DecoratedSignature[],
   threshold: number = account.thresholds.high_threshold
 ) {
@@ -83,7 +86,7 @@ export function hasSufficientSignatures(
 
   const effectiveSignatureWeights = account.signers
     .filter(signer =>
-      signatures.some(signature => signatureMatchesPublicKey(signature, signer.public_key))
+      signatures.some(signature => signatureMatchesPublicKey(signature, getSignerKey(signer)))
     )
     .map(signer => signer.weight)
 
