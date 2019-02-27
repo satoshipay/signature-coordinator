@@ -11,6 +11,7 @@
     "dev": "ts-node-dev -r dotenv/config .",
     "dev:db": "docker run -e POSTGRES_DB=postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 --rm postgres:11.0-alpine",
     "dev:db:seed": "cat migrations/*.sql | docker run --rm -i postgres:11.0-alpine psql 'postgres://postgres:postgres@host.docker.internal:5432/postgres'",
+    "prebuild": "rm -rf build/",
     "build": "tsc",
     "lint": "tslint --project . 'src/**/*.ts'",
     "lint:fix": "tslint --fix --project . 'src/**/*.ts'",
