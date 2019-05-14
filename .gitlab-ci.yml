@@ -4,7 +4,7 @@ variables:
   DOCKER_HUB_IMAGE: satoshipay/multisig-coordinator
   CI_APPLICATION_TAG: $CI_COMMIT_SHA
   CI_APPLICATION_REPOSITORY: ${CI_REGISTRY_IMAGE}/${CI_COMMIT_REF_SLUG}
-  INGRESS_CLASS: nginx
+  INGRESS_CLASS: auxiliary
 
 stages:
   - setup
@@ -105,7 +105,7 @@ production:
   image: registry.satoshipay.tech/infrastructure/docker/helmfile:latest
   dependencies: []
   variables:
-    INGRESS_CLASS: traefik
+    INGRESS_CLASS: '""'
   environment:
     name: production
     url: https://multisig.satoshipay.io
