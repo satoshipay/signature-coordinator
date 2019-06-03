@@ -105,7 +105,7 @@ production:
   image: registry.satoshipay.tech/infrastructure/docker/helmfile:latest
   dependencies: []
   variables:
-    INGRESS_CLASS: '""'
+    INGRESS_CLASS: core
   environment:
     name: production
     url: https://multisig.satoshipay.io
