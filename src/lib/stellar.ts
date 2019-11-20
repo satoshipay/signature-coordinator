@@ -1,4 +1,4 @@
-import { Horizon, Keypair, Network, Server, Transaction, xdr } from "stellar-sdk"
+import { AccountResponse, Horizon, Keypair, Networks, Server, Transaction, xdr } from "stellar-sdk"
 
 import { horizonServers } from "../config"
 
@@ -10,38 +10,19 @@ interface SignatureWithHint extends xdr.DecoratedSignature {
   hint(): Buffer
 }
 
-export const networkPassphrases = {
-  mainnet: "Public Global Stellar Network ; September 2015",
-  testnet: "Test SDF Network ; September 2015"
-}
-
 const dedupe = <T>(array: T[]) => [...new Set(array)]
 const sum = (array: number[]) => array.reduce((total, element) => total + element, 0)
 
-const getSignerKey = (signer: Horizon.AccountSigner): string =>
-  (signer as any).key || signer.public_key
+const getSignerKey = (signer: Horizon.AccountSigner): string => signer.key
 
-export function getHorizon(networkPassphrase: string): Server {
+export function getHorizon(networkPassphrase: Networks): Server {
   switch (networkPassphrase) {
-    case networkPassphrases.mainnet:
+    case Networks.PUBLIC:
       return horizonServers.mainnet
-    case networkPassphrases.testnet:
+    case Networks.TESTNET:
       return horizonServers.testnet
     default:
       throw new Error(`Unknown network passphrase: ${networkPassphrase}`)
-  }
-}
-
-export function selectStellarNetwork(networkPassphrase: string) {
-  switch (networkPassphrase) {
-    case networkPassphrases.mainnet:
-      Network.usePublicNetwork()
-      break
-    case networkPassphrases.testnet:
-      Network.useTestNetwork()
-      break
-    default:
-      throw new Error(`Unknown network passphrase: "${networkPassphrase}"`)
   }
 }
 
@@ -54,7 +35,7 @@ export function getAllSources(tx: Transaction) {
   ])
 }
 
-export function getAllSigners(accounts: Server.AccountResponse[]) {
+export function getAllSigners(accounts: AccountResponse[]) {
   return accounts.reduce(
     (signers, sourceAccount) =>
       dedupe([
@@ -78,7 +59,7 @@ export function signatureMatchesPublicKey(
 }
 
 export function hasSufficientSignatures(
-  account: Server.AccountResponse,
+  account: AccountResponse,
   signatures: xdr.DecoratedSignature[],
   threshold: number = account.thresholds.high_threshold
 ) {
@@ -117,15 +98,16 @@ function containsSignature(haystack: xdr.DecoratedSignature[], needle: xdr.Decor
 }
 
 export function collateTransactionSignatures(
+  network: Networks,
   tx: Transaction,
   additionalSignatures: xdr.DecoratedSignature[]
 ) {
-  const collatedTx = new Transaction(
-    tx
-      .toEnvelope()
-      .toXDR()
-      .toString("base64")
-  )
+  const base64TxXdr = tx
+    .toEnvelope()
+    .toXDR()
+    .toString("base64")
+
+  const collatedTx = new Transaction(base64TxXdr, network)
 
   const prevSignatures = tx.signatures
   const newSignatures = additionalSignatures.filter(
