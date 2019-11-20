@@ -36,7 +36,9 @@ export async function setSignersHasSignedFlags(
   signatureRequestID: string,
   accountIDs: string[]
 ) {
-  const { rowCount } = await client.query(
+  const {
+    rowCount
+  } = await client.query(
     "UPDATE signers SET has_signed = true WHERE signature_request = $1 AND account_id = ANY($2)",
     [signatureRequestID, accountIDs]
   )
