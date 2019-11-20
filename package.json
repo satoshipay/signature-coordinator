@@ -17,11 +17,15 @@
     "lint:fix": "tslint --fix --project . 'src/**/*.ts'",
     "prettier": "prettier --list-different '{src,test}/**/*.{md,ts,tsx,js,json}'",
     "prettier:fix": "prettier --write '{src,test}/**/*.{md,ts,tsx,js,json}'",
-    "test": "ava-ts",
+    "test": "ava",
     "posttest": "npm run lint",
-    "test:ci": "ava-ts --tap | tap-xunit > ava.xml"
+    "test:ci": "ava --tap | tap-xunit > ava.xml"
   },
   "ava": {
+    "compileEnhancements": false,
+    "extensions": [
+      "ts"
+    ],
     "files": [
       "./test/*.test.ts",
       "!./test/_helpers/*"
@@ -44,7 +48,7 @@
   },
   "dependencies": {
     "@godaddy/terminus": "^2.4.1",
-    "axios": "^0.18.0",
+    "axios": "^0.18.1",
     "envfefe": "^1.2.0",
     "http-errors": "^1.7.1",
     "http-event-stream": "^0.2.0",
@@ -72,20 +76,19 @@
     "@types/stellar-sdk": "^0.11.1",
     "@types/supertest": "^2.0.4",
     "@types/uuid": "^3.4.4",
-    "ava": "^0.25.0",
-    "ava-ts": "^0.25.2",
+    "ava": "^2.4.0",
     "dotenv": "^6.0.0",
     "eventsource": "^1.0.7",
     "get-port": "^4.0.0",
     "husky": "^0.14.3",
     "lint-staged": "^7.2.0",
-    "prettier": "^1.13.6",
+    "prettier": "^1.19.1",
     "supertest": "^3.3.0",
-    "tap-xunit": "^1.7.0",
+    "tap-xunit": "^2.4.1",
     "ts-node": "^7.0.0",
     "ts-node-dev": "^1.0.0-pre.26",
     "tslint": "^5.11.0",
     "tslint-config-prettier": "^1.13.0",
-    "typescript": "^3.1.1"
+    "typescript": "^3.7.2"
   }
 }
