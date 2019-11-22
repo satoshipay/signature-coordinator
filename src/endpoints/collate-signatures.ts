@@ -1,5 +1,5 @@
 import createError from "http-errors"
-import { Server, Transaction } from "stellar-sdk"
+import { Networks, Server, Transaction } from "stellar-sdk"
 
 import { database, transaction } from "../database"
 import { notifySignatureRequestSubmitted, notifySignatureRequestUpdated } from "../notifications"
@@ -8,8 +8,6 @@ import {
   collateTransactionSignatures,
   getHorizon,
   hasSufficientSignatures,
-  networkPassphrases,
-  selectStellarNetwork,
   signatureMatchesPublicKey,
   verifySignatures
 } from "../lib/stellar"
@@ -68,7 +66,6 @@ async function updateSignatureRequest(
 }
 
 export async function collateSignatures(signatureRequestHash: string, txXDR: string) {
-  const inputTx = new Transaction(txXDR)
   const signatureRequest = await querySignatureRequestByHash(database, signatureRequestHash)
 
   if (!signatureRequest) {
@@ -79,15 +76,14 @@ export async function collateSignatures(signatureRequestHash: string, txXDR: str
   const signerAccountIDs = signers.map(signer => signer.account_id)
 
   const signatureRequestParams = parseRequestURI(signatureRequest.request_uri).parameters
-  const network = signatureRequestParams.network_passphrase || networkPassphrases.mainnet
+  const network = (signatureRequestParams.network_passphrase || Networks.PUBLIC) as Networks
 
-  selectStellarNetwork(network)
+  const inputTx = new Transaction(txXDR, network)
+
   verifySignatures(inputTx, signerAccountIDs)
 
-  const collatedTx = collateTransactionSignatures(inputTx, inputTx.signatures)
-  const horizon = getHorizon(
-    signatureRequestParams.network_passphrase || networkPassphrases.mainnet
-  )
+  const collatedTx = collateTransactionSignatures(network, inputTx, inputTx.signatures)
+  const horizon = getHorizon(network)
 
   const [sourceAccount, allSigners] = await Promise.all([
     horizon.loadAccount(collatedTx.source),

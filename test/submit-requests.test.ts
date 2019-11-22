@@ -1,13 +1,12 @@
 import test from "ava"
 import { createHash } from "crypto"
 import request, { Response } from "supertest"
-import { Keypair, Operation } from "stellar-sdk"
+import { Keypair, Networks, Operation } from "stellar-sdk"
 
 import { createSignatureRequestURI } from "../src/lib/sep-0007"
 import { withApp } from "./_helpers/bootstrap"
 import { recordEventStream } from "./_helpers/event-stream"
 import { createTransaction, horizon, topup } from "./_helpers/transactions"
-import { networkPassphrases } from "../src/lib/stellar"
 
 const multisigAccountKeypair = Keypair.random()
 const cosignerKeypair = Keypair.random()
@@ -27,7 +26,7 @@ test.before(async () => {
   await topup(multisigAccountKeypair.publicKey())
 
   await horizon.submitTransaction(
-    await createTransaction(multisigAccountKeypair, [
+    await createTransaction(Networks.TESTNET, multisigAccountKeypair, [
       Operation.setOptions({
         signer: {
           ed25519PublicKey: cosignerKeypair.publicKey(),
@@ -45,7 +44,7 @@ test.before(async () => {
 
 test("can submit a co-signature request", async t =>
   withApp(async ({ config, server }) => {
-    const tx = await createTransaction(multisigAccountKeypair, [
+    const tx = await createTransaction(Networks.TESTNET, multisigAccountKeypair, [
       Operation.createAccount({
         destination: someOtherKeypair.publicKey(),
         startingBalance: "10.0"
@@ -57,7 +56,7 @@ test("can submit a co-signature request", async t =>
       ["signature-request"]
     )
     const urlFormattedRequest = createSignatureRequestURI(tx, {
-      network_passphrase: networkPassphrases.testnet
+      network_passphrase: Networks.TESTNET
     })
 
     await request(server)
@@ -110,7 +109,7 @@ test("can submit a co-signature request", async t =>
 
 test("signature request submission is idempotent", async t =>
   withApp(async ({ server }) => {
-    const tx = await createTransaction(multisigAccountKeypair, [
+    const tx = await createTransaction(Networks.TESTNET, multisigAccountKeypair, [
       Operation.createAccount({
         destination: someOtherKeypair.publicKey(),
         startingBalance: "1.0"
@@ -118,7 +117,7 @@ test("signature request submission is idempotent", async t =>
     ])
 
     const urlFormattedRequest = createSignatureRequestURI(tx, {
-      network_passphrase: networkPassphrases.testnet
+      network_passphrase: Networks.TESTNET
     })
 
     const firstSubmissionResponse = await request(server)

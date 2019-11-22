@@ -1,13 +1,12 @@
 import test from "ava"
 import request, { Response } from "supertest"
-import { Keypair, Operation } from "stellar-sdk"
+import { Keypair, Networks, Operation } from "stellar-sdk"
 import URL from "url"
 
 import { createSignatureRequestURI } from "../src/lib/sep-0007"
 import { withApp } from "./_helpers/bootstrap"
 import { recordEventStream } from "./_helpers/event-stream"
 import { cosignSignatureRequest, createTransaction, horizon, topup } from "./_helpers/transactions"
-import { networkPassphrases } from "../src/lib/stellar"
 
 const multisigAccountKeypair = Keypair.random()
 const cosignerKeypair = Keypair.random()
@@ -21,7 +20,7 @@ test.before(async () => {
   await topup(multisigAccountKeypair.publicKey())
 
   await horizon.submitTransaction(
-    await createTransaction(multisigAccountKeypair, [
+    await createTransaction(Networks.TESTNET, multisigAccountKeypair, [
       Operation.setOptions({
         signer: {
           ed25519PublicKey: cosignerKeypair.publicKey(),
@@ -39,7 +38,7 @@ test.before(async () => {
 
 test("can submit a co-sig request and collate a 2nd signature", async t =>
   withApp(async ({ config, server }) => {
-    const tx = await createTransaction(multisigAccountKeypair, [
+    const tx = await createTransaction(Networks.TESTNET, multisigAccountKeypair, [
       Operation.createAccount({
         destination: someOtherKeypair.publicKey(),
         startingBalance: "10.0"
@@ -51,7 +50,7 @@ test("can submit a co-sig request and collate a 2nd signature", async t =>
       ["signature-request:submitted"]
     )
     const urlFormattedRequest = createSignatureRequestURI(tx, {
-      network_passphrase: networkPassphrases.testnet
+      network_passphrase: Networks.TESTNET
     })
 
     const submissionResponse = await request(server)
@@ -75,7 +74,11 @@ test("can submit a co-sig request and collate a 2nd signature", async t =>
     const requestURI =
       cosignerQueryResponse.body[0].request_uri ||
       t.fail("Expected signature request to contain a request_uri.")
-    const { collateURL, cosignedTx } = cosignSignatureRequest(requestURI, cosignerKeypair)
+    const { collateURL, cosignedTx } = cosignSignatureRequest(
+      Networks.TESTNET,
+      requestURI,
+      cosignerKeypair
+    )
 
     await request(server)
       .post(URL.parse(collateURL).pathname as string)

@@ -1,6 +1,6 @@
 import { createHash } from "crypto"
 import createError from "http-errors"
-import { Transaction } from "stellar-sdk"
+import { Networks, Transaction } from "stellar-sdk"
 import uuid from "uuid"
 
 import { transaction } from "../database"
@@ -11,17 +11,15 @@ import {
   getAllSources,
   getHorizon,
   hasSufficientSignatures,
-  networkPassphrases,
-  selectStellarNetwork,
   signatureMatchesPublicKey,
   verifySignatures
 } from "../lib/stellar"
 import { saveSigner, Signer } from "../models/signer"
 import { createSignatureRequest } from "../models/signature-request"
 
-function parseTransactionXDR(base64XDR: string) {
+function parseTransactionXDR(base64XDR: string, network: Networks) {
   try {
-    return new Transaction(base64XDR)
+    return new Transaction(base64XDR, network)
   } catch (error) {
     throw createError(400, "Cannot parse transaction XDR: " + error.message)
   }
@@ -40,10 +38,8 @@ export async function handleSignatureRequestSubmission(requestURI: string) {
     throw createError(400, "This endpoint supports the 'tx' operation only.")
   }
 
-  const network = parameters.network_passphrase || networkPassphrases.mainnet
-  const tx = parseTransactionXDR(parameters.xdr)
-
-  await selectStellarNetwork(network)
+  const network = (parameters.network_passphrase || Networks.PUBLIC) as Networks
+  const tx = parseTransactionXDR(parameters.xdr, network)
 
   const sourceAccounts = await Promise.all(
     getAllSources(tx).map(sourcePublicKey => getHorizon(network).loadAccount(sourcePublicKey))

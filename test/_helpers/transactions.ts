@@ -1,6 +1,6 @@
 import axios from "axios"
 import qs from "qs"
-import { Keypair, Network, Server, Transaction, TransactionBuilder, xdr } from "stellar-sdk"
+import { Keypair, Networks, Server, Transaction, TransactionBuilder, xdr } from "stellar-sdk"
 
 function fail(message: string): never {
   throw new Error(message)
@@ -13,9 +13,13 @@ export async function topup(publicKey: string) {
   await axios.get(`${horizonURL}/friendbot?addr=${publicKey}`)
 }
 
-export async function createTransaction(accountKeypair: Keypair, operations: xdr.Operation<any>[]) {
+export async function createTransaction(
+  network: Networks,
+  accountKeypair: Keypair,
+  operations: xdr.Operation<any>[]
+) {
   const account = await horizon.loadAccount(accountKeypair.publicKey())
-  const txBuilder = new TransactionBuilder(account, { fee: 100 })
+  const txBuilder = new TransactionBuilder(account, { fee: 100, networkPassphrase: network })
 
   for (const operation of operations) {
     txBuilder.addOperation(operation)
@@ -24,16 +28,19 @@ export async function createTransaction(accountKeypair: Keypair, operations: xdr
   txBuilder.setTimeout(60)
   const tx = txBuilder.build()
 
-  Network.useTestNetwork()
   tx.sign(accountKeypair)
 
   return tx
 }
 
-export function cosignSignatureRequest(requestURI: string, cosignerKeypair: Keypair) {
+export function cosignSignatureRequest(
+  network: Networks,
+  requestURI: string,
+  cosignerKeypair: Keypair
+) {
   const requestParams = qs.parse(requestURI.replace(/^.*\?/, ""))
 
-  const rehydratedTx = new Transaction(requestParams.xdr)
+  const rehydratedTx = new Transaction(requestParams.xdr, network)
   rehydratedTx.sign(cosignerKeypair)
 
   if (!requestParams.callback) {
