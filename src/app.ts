@@ -3,7 +3,7 @@ import CORS from "kcors"
 import url from "url"
 
 import { Config } from "./config"
-import createRouter from "./router"
+import router from "./router"
 
 const ErrorMiddleware = () => async (ctx: Koa.Context, next: () => Promise<any>) => {
   try {
@@ -29,7 +29,6 @@ const ErrorMiddleware = () => async (ctx: Koa.Context, next: () => Promise<any>)
 
 export default function createApp(config: Config) {
   const app = new Koa()
-  const router = createRouter(config)
   const pathPrefix = url.parse(config.baseUrl).pathname as string
 
   router.prefix(pathPrefix)

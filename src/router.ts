@@ -1,14 +1,16 @@
-import createError from "http-errors"
+import { parseStellarUri } from "@stellarguard/stellar-uri"
+import HttpError from "http-errors"
 import BodyParser from "koa-body"
 import Router from "koa-router"
 
-import { Config } from "./config"
-import { collateSignatures } from "./endpoints/collate-signatures"
-import { querySignatureRequests } from "./endpoints/query-signature-requests"
-import { streamSignatureRequests } from "./endpoints/stream-signature-requests"
-import { handleSignatureRequestSubmission } from "./endpoints/submit-signature-request"
-import { patchSignatureRequestURIParameters } from "./lib/sep-0007"
-import { SerializedSignatureRequest } from "./models/signature-request"
+import config from "./config"
+import { collateSignatures } from "./endpoints/collate"
+import { handleSignatureRequestSubmission } from "./endpoints/create"
+import { querySignatureRequests, serializeSignatureRequestAndSigners } from "./endpoints/query"
+import { streamSignatureRequests } from "./endpoints/stream"
+import { submitTransaction } from "./endpoints/submit"
+import { querySignatureRequestByHash, SerializedSignatureRequest } from "./models/signature-request"
+import { database } from "./database"
 
 // tslint:disable-next-line
 const pkg = require("../package.json") as any
@@ -23,71 +25,105 @@ function urlJoin(baseURL: string, path: string) {
   }
 }
 
-export default function createRouter(config: Config) {
-  const createHRef = (path: string) => urlJoin(config.baseUrl, path)
-  const router = new Router()
+const createHRef = (path: string) => urlJoin(config.baseUrl, path)
+const router = new Router()
 
-  function prepareSignatureRequest(serialized: SerializedSignatureRequest) {
-    const collateURL = createHRef(`/signatures/collate/${serialized.hash}`)
-    return {
-      ...serialized,
-      request_uri: patchSignatureRequestURIParameters(serialized.request_uri, {
-        callback: `url:${collateURL}`
-      })
-    }
+function prepareSignatureRequest(serialized: SerializedSignatureRequest) {
+  const uri = parseStellarUri(serialized.req)
+  uri.callback = createHRef(`/signatures/collate/${serialized.hash}`)
+
+  return {
+    ...serialized,
+    req: uri.toString()
+  }
+}
+
+router.use(
+  BodyParser({
+    urlencoded: true
+  })
+)
+
+router.get("/status/:hash", async ({ params, response }) => {
+  const signatureRequest = await querySignatureRequestByHash(database, params.hash)
+
+  if (!signatureRequest) {
+    throw HttpError(404, `Signature request not found`)
   }
 
-  router.use(
-    BodyParser({
-      urlencoded: true
-    })
-  )
+  response.body = await serializeSignatureRequestAndSigners(signatureRequest)
+})
 
-  router.get("/requests/:accountIDs", async ({ params, query, response }) => {
-    const accountIDs = params.accountIDs.split(",")
-    const cursor = query.cursor || undefined
-    const limit = query.limit ? Number.parseInt(query.limit, 10) : undefined
+router.get("/requests/:accountIDs", async context => {
+  const { params, query, response, request } = context
 
-    const serializedSignatureRequests = await querySignatureRequests(accountIDs, { cursor, limit })
-    response.body = serializedSignatureRequests.map(prepareSignatureRequest)
-  })
+  const accountIDs = params.accountIDs.split(",")
+  const cursor = query.cursor || undefined
+  const limit = query.limit ? Number.parseInt(query.limit, 10) : undefined
 
-  router.post("/submit", async ({ request, response }) => {
-    if (typeof request.body !== "string") {
-      throw createError(400, "Expected URL-formatted payment request as POST request body.")
-    }
-
-    response.body = await handleSignatureRequestSubmission(request.body)
-  })
-
-  router.post("/signatures/collate/:hash", async ({ params, request, response }) => {
-    if (!request.body || typeof request.body !== "object") {
-      throw createError(400, "Expected application/x-www-form-urlencoded POST body.")
-    }
-
-    const { xdr } = request.body
-    response.body = await collateSignatures(params.hash, xdr)
-  })
-
-  router.get("/stream/:accountIDs", async context => {
-    const accountIDs = context.params.accountIDs.split(",") as string[]
-
+  if (request.accepts("text/event-stream")) {
     streamSignatureRequests(context.req, context.res, accountIDs, prepareSignatureRequest)
 
     // Don't close the request/stream after handling the route!
     context.respond = false
-  })
+  } else {
+    const serializedSignatureRequests = await querySignatureRequests(accountIDs, { cursor, limit })
+    response.body = serializedSignatureRequests.map(prepareSignatureRequest)
+  }
+})
 
-  router.get("/status/live", ctx => {
-    ctx.status = 200
-  })
+router.post("/create", async ({ request, response }) => {
+  if (!request.body || typeof request.body !== "object") {
+    throw HttpError(400, "Expected URL-formatted payment request as POST request body.")
+  }
 
-  router.get("/", ctx => {
-    ctx.body = {
-      name: pkg.name,
-      version: pkg.version
-    }
-  })
+  const { pubkey, req, signature } = request.body
 
-  return router
-}
+  if (!req) {
+    throw HttpError(400, `Missing POST parameter "req"`)
+  }
+  if (!pubkey) {
+    throw HttpError(400, `Missing POST parameter "pubkey"`)
+  }
+  if (!signature) {
+    throw HttpError(400, `Missing POST parameter "signature"`)
+  }
+
+  response.body = await handleSignatureRequestSubmission(req, signature, pubkey)
+})
+
+router.post("/collate/:hash", async ({ params, request, response, throw: fail }) => {
+  if (!request.body || typeof request.body !== "object") {
+    throw HttpError(400, "Expected application/x-www-form-urlencoded POST body.")
+  }
+
+  const {
+    pubkey = fail("Request body parameter pubkey not set"),
+    signature = fail("Request body parameter signature not set")
+  } = request.body
+
+  response.body = await collateSignatures(params.hash, signature, pubkey)
+})
+
+router.post("/submit/:hash", async ({ params, response }) => {
+  const [submissionResponse, submissionURL] = await submitTransaction(params.hash)
+
+  // TODO: Check size of submission response body
+
+  response.set("X-Submitted-To", submissionURL)
+  response.status = submissionResponse.status
+  response.body = submissionResponse.data
+})
+
+router.get("/status/live", ctx => {
+  ctx.status = 200
+})
+
+router.get("/", ctx => {
+  ctx.body = {
+    name: pkg.name,
+    version: pkg.version
+  }
+})
+
+export default router

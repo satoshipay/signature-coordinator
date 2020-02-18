@@ -1,15 +1,22 @@
 import { Pool, PoolClient, types as pgTypes } from "pg"
 import createPostgresSubscriber from "pg-listen"
-import { URL } from "url"
 import config from "./config"
 import { querySignatureRequestByHash } from "./models/signature-request"
 
 export type DBClient = Pool | PoolClient
 
-export const database = new Pool({ connectionString: config.database })
+export const database = new Pool({
+  database: config.pgdatabase,
+  host: config.pghost,
+  password: config.pgpassword,
+  user: config.pguser
+})
 
 export const notificationsSubscription = createPostgresSubscriber({
-  connectionString: config.database
+  database: config.pgdatabase,
+  host: config.pghost,
+  password: config.pgpassword,
+  user: config.pguser
 })
 
 notificationsSubscription.events.on("error", (error: Error) => {
@@ -28,26 +35,20 @@ pgTypes.setTypeParser(TIMESTAMP_OID, (value: string | null) => {
 
 export async function connectToDatabase() {
   try {
-    console.log("Checking database connection...")
+    console.debug("Checking database connection...")
     await Promise.all([database.connect(), notificationsSubscription.connect()])
     await Promise.race([
+      // it's fine if the query resolves to null
       querySignatureRequestByHash(database, "nonexistent"),
       delay(2000).then(() => {
         throw new Error("Database connection test query timed out.")
       })
     ])
-    console.log("Database connection ok.")
+    console.debug("Database connection ok.")
   } catch (error) {
-    let connection = `${process.env.PGUSER}@${process.env.PGHOST}`
-
-    if (config.database) {
-      const url = new URL(
-        config.database || `postgres://${process.env.PGUSER}@${process.env.PGHOST}`
-      )
-      url.password = "*".repeat(url.password.length)
-      connection = url.toString()
-    }
-    throw new Error(`Cannot connect to database ${connection}: ${error.message}`)
+    throw new Error(
+      `Cannot connect to database ${config.pgdatabase}@${config.pghost}: ${error.message}`
+    )
   }
 }
 
