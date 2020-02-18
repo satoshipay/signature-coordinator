@@ -9,8 +9,9 @@ function seed(database: Pool) {
       request: {
         id: "ae4fb902-f02a-4f3f-b5d1-c9221b7cb40c",
         hash: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110757",
-        created_at: new Date("2019-12-03T12:00:00.000Z").toISOString(),
-        updated_at: new Date("2019-12-03T12:10:00.000Z").toISOString(),
+        created_at: new Date("2019-12-03T12:00:00.000Z"),
+        updated_at: new Date("2019-12-03T12:10:00.000Z"),
+        expires_at: new Date(Date.now() + 60_000),
         req: `web+stellar:tx?xdr=${encodeURIComponent(
           "AAAAAP+yw+ZEuNg533pUmwlYxfrq6/BoMJqiJ8vuQhf6rHWmAAAAZAB8NHAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAA/7LD5kS42DnfelSbCVjF+urr8GgwmqIny+5CF/qsdaYAAAAAAAAAAACYloAAAAAAAAAAAA"
         )}`,
@@ -22,8 +23,9 @@ function seed(database: Pool) {
       request: {
         id: "7974897e-1230-4d12-8588-644c6cfeba23",
         hash: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110758",
-        created_at: new Date("2019-12-03T12:00:00.000Z").toISOString(),
-        updated_at: new Date("2019-12-03T12:10:00.000Z").toISOString(),
+        created_at: new Date("2019-12-03T12:00:00.000Z"),
+        updated_at: new Date("2019-12-03T12:10:00.000Z"),
+        expires_at: new Date(Date.now() + 60_000),
         req: `web+stellar:tx?xdr=${encodeURIComponent(
           "AAAAAP+yw+ZEuNg533pUmwlYxfrq6/BoMJqiJ8vuQhf6rHWmAAAAZAB8NHAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAA/7LD5kS42DnfelSbCVjF+urr8GgwmqIny+5CF/qsdaYAAAAAAAAAAACYloAAAAAAAAAAAA"
         )}`,
@@ -35,9 +37,9 @@ function seed(database: Pool) {
       request: {
         id: "8cd634aa-0bff-4fc4-994f-96ebb85270d5",
         hash: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110759",
-        created_at: new Date("2019-12-03T12:00:00.000Z").toISOString(),
-        updated_at: new Date("2019-12-03T12:10:00.000Z").toISOString(),
-        expires_at: new Date("2019-12-03T12:10:00.000Z").toISOString(),
+        created_at: new Date("2019-12-03T12:00:00.000Z"),
+        updated_at: new Date("2019-12-03T12:10:00.000Z"),
+        expires_at: new Date("2019-12-03T12:10:00.000Z"),
         req: `web+stellar:tx?xdr=${encodeURIComponent(
           "AAAAAP+yw+ZEuNg533pUmwlYxfrq6/BoMJqiJ8vuQhf6rHWmAAAAZAB8NHAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAA/7LD5kS42DnfelSbCVjF+urr8GgwmqIny+5CF/qsdaYAAAAAAAAAAACYloAAAAAAAAAAAA"
         )}`,

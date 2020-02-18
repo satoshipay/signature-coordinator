@@ -1,42 +1,20 @@
-import { parseStellarUri } from "@stellarguard/stellar-uri"
 import HttpError from "http-errors"
 import BodyParser from "koa-body"
 import Router from "koa-router"
 
 import config from "./config"
+import { database } from "./database"
 import { collateSignatures } from "./endpoints/collate"
 import { handleSignatureRequestSubmission } from "./endpoints/create"
 import { querySignatureRequests, serializeSignatureRequestAndSigners } from "./endpoints/query"
 import { streamSignatureRequests } from "./endpoints/stream"
 import { submitTransaction } from "./endpoints/submit"
-import { querySignatureRequestByHash, SerializedSignatureRequest } from "./models/signature-request"
-import { database } from "./database"
+import { querySignatureRequestByHash } from "./models/signature-request"
 
 // tslint:disable-next-line
 const pkg = require("../package.json") as any
 
-function urlJoin(baseURL: string, path: string) {
-  if (baseURL.charAt(baseURL.length - 1) === "/" && path.charAt(0) === "/") {
-    return baseURL + path.substr(1)
-  } else if (baseURL.charAt(baseURL.length - 1) === "/" || path.charAt(0) === "/") {
-    return baseURL + path
-  } else {
-    return baseURL + "/" + path
-  }
-}
-
-const createHRef = (path: string) => urlJoin(config.baseUrl, path)
 const router = new Router()
-
-function prepareSignatureRequest(serialized: SerializedSignatureRequest) {
-  const uri = parseStellarUri(serialized.req)
-  uri.callback = createHRef(`/signatures/collate/${serialized.hash}`)
-
-  return {
-    ...serialized,
-    req: uri.toString()
-  }
-}
 
 router.use(
   BodyParser({
@@ -61,14 +39,14 @@ router.get("/requests/:accountIDs", async context => {
   const cursor = query.cursor || undefined
   const limit = query.limit ? Number.parseInt(query.limit, 10) : undefined
 
-  if (request.accepts("text/event-stream")) {
-    streamSignatureRequests(context.req, context.res, accountIDs, prepareSignatureRequest)
+  if (request.get("Accept") && /text\/event-stream/.test(request.get("Accept"))) {
+    streamSignatureRequests(context.req, context.res, accountIDs)
 
     // Don't close the request/stream after handling the route!
     context.respond = false
   } else {
     const serializedSignatureRequests = await querySignatureRequests(accountIDs, { cursor, limit })
-    response.body = serializedSignatureRequests.map(prepareSignatureRequest)
+    response.body = serializedSignatureRequests
   }
 })
 
@@ -89,7 +67,10 @@ router.post("/create", async ({ request, response }) => {
     throw HttpError(400, `Missing POST parameter "signature"`)
   }
 
-  response.body = await handleSignatureRequestSubmission(req, signature, pubkey)
+  const signatureRequest = await handleSignatureRequestSubmission(req, signature, pubkey)
+
+  response.status = 201
+  response.set("Location", String(new URL(`/status/${signatureRequest.hash}`, config.baseUrl)))
 })
 
 router.post("/collate/:hash", async ({ params, request, response, throw: fail }) => {

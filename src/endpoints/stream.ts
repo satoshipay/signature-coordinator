@@ -1,7 +1,6 @@
 import * as http from "http"
 import { streamEvents, StreamContext } from "http-event-stream"
 
-import { SerializedSignatureRequest } from "../models/signature-request"
 import { notifications, NotificationPayload } from "../notifications"
 import { querySignatureRequests } from "./query"
 
@@ -16,11 +15,8 @@ function createServerSentEvent(eventName: string, timestamp: string | number, da
 export async function streamSignatureRequests(
   req: http.IncomingMessage,
   res: http.ServerResponse,
-  subscribedAccountIDs: string[],
-  prepareSerializedSignatureRequest?: (serialized: SerializedSignatureRequest) => any
+  subscribedAccountIDs: string[]
 ) {
-  const prepareRequest = prepareSerializedSignatureRequest || (serialized => serialized)
-
   streamEvents(req, res, {
     async fetch(lastEventId: string) {
       const since = new Date(Number.parseInt(lastEventId, 10)).toISOString()
@@ -31,7 +27,7 @@ export async function streamSignatureRequests(
       return serializedSignatureRequests.map(serializedSignatureRequest => {
         return createServerSentEvent(
           "signature-request",
-          serializedSignatureRequest.created_at,
+          serializedSignatureRequest.created_at.toISOString(),
           serializedSignatureRequest
         )
       })
@@ -45,8 +41,8 @@ export async function streamSignatureRequests(
           context.sendEvent(
             createServerSentEvent(
               "request:added",
-              signatureRequest.created_at,
-              prepareRequest(signatureRequest)
+              signatureRequest.created_at.toISOString(),
+              signatureRequest
             )
           )
         }
@@ -58,8 +54,8 @@ export async function streamSignatureRequests(
           context.sendEvent(
             createServerSentEvent(
               "request:updated",
-              signatureRequest.created_at,
-              prepareRequest(signatureRequest)
+              signatureRequest.created_at.toISOString(),
+              signatureRequest
             )
           )
         }

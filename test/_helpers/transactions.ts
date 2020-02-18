@@ -21,6 +21,34 @@ function fail(message: string): never {
 const horizonURL = process.env.HORIZON_TESTNET || fail("No HORIZON_TESTNET set.")
 export const horizon = new Server(horizonURL)
 
+type AccountInitializer = (keypair: Keypair) => any
+
+const testAccountKeypairs: Keypair[] = []
+const testAccountInitializers = new WeakMap<Keypair, AccountInitializer>()
+let uninitializedTestAccounts: Keypair[] = []
+
+export function leaseTestAccount(init: AccountInitializer = () => undefined) {
+  const keypair = Keypair.random()
+  testAccountKeypairs.push(keypair)
+  testAccountInitializers.set(keypair, init)
+  uninitializedTestAccounts.push(keypair)
+  return keypair
+}
+
+export async function initializeTestAccounts() {
+  const keypairsToInitialize = uninitializedTestAccounts
+
+  const results = await Promise.all(
+    keypairsToInitialize.map(async keypair => {
+      const initialize = testAccountInitializers.get(keypair)!
+      return initialize(keypair)
+    })
+  )
+
+  uninitializedTestAccounts = []
+  return results
+}
+
 export async function topup(accountID: string) {
   await axios.get(`${horizonURL}/friendbot?addr=${accountID}`)
   // Wait a little bit, so the horizon can catch-up, in case the friendbot used a different horizon
@@ -60,6 +88,10 @@ export async function buildTransaction(
   operations: xdr.Operation<any>[],
   options?: Partial<TransactionBuilder.TransactionBuilderOptions>
 ) {
+  if (options && options.timebounds && !options.timebounds.minTime) {
+    options.timebounds.minTime = 0
+  }
+
   const account = await horizon.loadAccount(accountID)
   const txBuilder = new TransactionBuilder(account, {
     fee: 100,

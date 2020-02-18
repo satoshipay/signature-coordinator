@@ -26,6 +26,12 @@ export async function collateSignatures(
   if (!signatureRequest) {
     throw HttpError(404, `Signature request not found: ${signatureRequestHash}`)
   }
+  if (signatureRequest.status === "ready") {
+    throw HttpError(400, `Transaction is already sufficiently signed.`)
+  }
+  if (signatureRequest.status === "submitted" || signatureRequest.status === "failed") {
+    throw HttpError(400, `Transaction has already been submitted.`)
+  }
 
   const signers = await queryAllSignatureRequestSigners(database, signatureRequest.id)
   const signerAccountIDs = dedupe(signers.map(signer => signer.account_id))
@@ -42,6 +48,12 @@ export async function collateSignatures(
 
   if (!signerKey.verify(tx.hash(), Buffer.from(signatureXDR, "base64"))) {
     throw HttpError(400, "Invalid signature")
+  }
+
+  const signatures = await querySignatureRequestSignatures(database, signatureRequest.id)
+
+  if (signatures.some(sig => sig.signer_account_id === signerPubKey)) {
+    throw HttpError(400, "Signature has already been submitted")
   }
 
   await saveSignature(database, {

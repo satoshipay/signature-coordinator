@@ -4,7 +4,7 @@ import createError from "http-errors"
 import { Keypair, Networks, Transaction } from "stellar-sdk"
 import uuid from "uuid"
 
-import { transaction, database } from "../database"
+import { transaction } from "../database"
 import { notifyNewSignatureRequest } from "../notifications"
 import { getAllSigners, getAllSources, getHorizon, hasSufficientSignatures } from "../lib/stellar"
 import { saveSigner, Signer } from "../models/signer"
@@ -60,7 +60,7 @@ export async function handleSignatureRequestSubmission(
   if (!requiredSigners.includes(signaturePubKey)) {
     throw createError(
       400,
-      "Transaction signature is ceated by an unrecognized key. Only sign with keys that are signers."
+      "Transaction signature is created by an unrecognized key. Only sign with keys that are signers."
     )
   }
 
@@ -68,30 +68,30 @@ export async function handleSignatureRequestSubmission(
     throw createError(400, "Transaction is already sufficiently signed.")
   }
 
+  if (!tx.timeBounds || !tx.timeBounds.maxTime) {
+    throw createError(400, "Transaction must have upper timebound set.")
+  }
+
   const { serialized, signers } = await transaction(async client => {
     const signatureRequest = await createSignatureRequest(client, {
       id: uuid.v4(),
       hash: hashSignatureRequest(requestURI),
       req: requestURI,
-      status: "pending"
+      status: "pending",
+      expires_at: new Date(Number.parseInt(tx.timeBounds!.maxTime, 10) * 1000)
     })
 
-    await Promise.all([
-      ...sourceAccounts.map(sourceAccount => {
-        return saveSourceAccount(database, {
+    await Promise.all(
+      sourceAccounts.map(sourceAccount => {
+        return saveSourceAccount(client, {
           signature_request: signatureRequest.id,
           account_id: sourceAccount.id,
           key_weight_threshold: sourceAccount.thresholds.high_threshold
         })
-      }),
-      saveSignature(database, {
-        signature_request: signatureRequest.id,
-        signer_account_id: signaturePubKey,
-        signature: signatureXDR
       })
-    ] as Array<Promise<any>>)
+    )
 
-    const signers: Signer[] = []
+    const createdSigners: Signer[] = []
 
     for (const source of sourceAccounts) {
       for (const signer of source.signers) {
@@ -101,13 +101,19 @@ export async function handleSignatureRequestSubmission(
           account_id: signer.key,
           key_weight: signer.weight
         })
-        signers.push(record)
+        createdSigners.push(record)
       }
     }
 
+    await saveSignature(client, {
+      signature_request: signatureRequest.id,
+      signer_account_id: signaturePubKey,
+      signature: signatureXDR
+    })
+
     return {
       serialized: await serializeSignatureRequestAndSigners(signatureRequest),
-      signers
+      signers: createdSigners
     }
   })
 

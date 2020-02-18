@@ -5,7 +5,7 @@ export interface Signature {
   signature_request: string
   signer_account_id: string
   signature: string
-  created_at: string
+  created_at: Date
 }
 
 export type NewSignature = Omit<Signature, "created_at">

@@ -1,6 +1,6 @@
 import test from "ava"
 import { createHash } from "crypto"
-import { Asset, Keypair, Networks, Operation } from "stellar-sdk"
+import { Asset, Networks, Operation } from "stellar-sdk"
 import request from "supertest"
 import { querySignatureRequestSignatures } from "../src/models/signature"
 import { querySignatureRequestByHash } from "../src/models/signature-request"
@@ -9,8 +9,14 @@ import { withApp } from "./_helpers/bootstrap"
 import {
   buildTransaction,
   buildTransactionURI,
+  initializeTestAccounts,
+  leaseTestAccount,
   prepareTestnetAccount
 } from "./_helpers/transactions"
+
+const keypair = leaseTestAccount(kp =>
+  prepareTestnetAccount(kp, 1, ["GBLHBKLMPZ5F5ACPSVDLSE6UUQTGTJJ36RNUN6D2EQU3JHQBG6CMFLXL"])
+)
 
 function sha256(text: string): string {
   const hash = createHash("sha256")
@@ -18,14 +24,12 @@ function sha256(text: string): string {
   return hash.digest("hex")
 }
 
-test("can submit a request", t =>
+test.before(async () => {
+  await initializeTestAccounts()
+})
+
+test("can create a request", t =>
   withApp(async ({ database, server }) => {
-    const keypair = Keypair.random()
-
-    await prepareTestnetAccount(keypair, 1, [
-      "GBLHBKLMPZ5F5ACPSVDLSE6UUQTGTJJ36RNUN6D2EQU3JHQBG6CMFLXL"
-    ])
-
     const tx = await buildTransaction(Networks.TESTNET, keypair.publicKey(), [
       Operation.payment({
         amount: "1.0",
@@ -35,13 +39,13 @@ test("can submit a request", t =>
     ])
 
     const req = buildTransactionURI(Networks.TESTNET, tx).toString()
-    const signature = keypair.sign(tx.signatureBase())
+    const signature = keypair.sign(tx.hash())
 
     const response = await request(server)
       .post("/create")
       .send({
         hash: sha256(req),
-        pibkey: keypair.publicKey(),
+        pubkey: keypair.publicKey(),
         req,
         signature: signature.toString("base64")
       })
@@ -55,13 +59,14 @@ test("can submit a request", t =>
     }
 
     t.is(record.hash, sha256(req))
-    t.is(record.expires_at, null)
+    t.is(record.expires_at.getTime(), Number.parseInt(tx.timeBounds!.maxTime, 10) * 1000)
     t.assert(
-      Date.parse(record.created_at) >= Date.now() - 1000 &&
-        Date.parse(record.created_at) <= Date.now()
+      record.created_at.getTime() >= Date.now() - 1000 && record.created_at.getTime() <= Date.now()
     )
 
-    const signers = await queryAllSignatureRequestSigners(database, record.id)
+    const keypairFirst = (a: any) => (a.account_id === keypair.publicKey() ? -1 : 1)
+    const signers = (await queryAllSignatureRequestSigners(database, record.id)).sort(keypairFirst)
+
     t.deepEqual(signers, [
       {
         account_id: keypair.publicKey(),
@@ -70,27 +75,22 @@ test("can submit a request", t =>
         source_account_id: keypair.publicKey()
       },
       {
-        account_id: "GD73FQ7GIS4NQOO7PJKJWCKYYX5OV27QNAYJVIRHZPXEEF72VR22MLXU",
+        account_id: "GBLHBKLMPZ5F5ACPSVDLSE6UUQTGTJJ36RNUN6D2EQU3JHQBG6CMFLXL",
         key_weight: 1,
         signature_request: record.id,
         source_account_id: keypair.publicKey()
       }
     ])
 
-    const signatures = await querySignatureRequestSignatures(database, record.hash)
+    const signatures = await querySignatureRequestSignatures(database, record.id)
+
     t.is(signatures.length, 1)
     t.is(signatures[0].signature, signature.toString("base64"))
     t.is(signatures[0].signer_account_id, keypair.publicKey())
   }))
 
-test("cannot submit a request with a tx xdr containing a signature", () =>
+test("cannot submit a request with a tx xdr containing a signature", t =>
   withApp(async ({ server }) => {
-    const keypair = Keypair.random()
-
-    await prepareTestnetAccount(keypair, 1, [
-      "GBLHBKLMPZ5F5ACPSVDLSE6UUQTGTJJ36RNUN6D2EQU3JHQBG6CMFLXL"
-    ])
-
     const tx = await buildTransaction(Networks.TESTNET, keypair.publicKey(), [
       Operation.payment({
         amount: "1.0",
@@ -99,7 +99,7 @@ test("cannot submit a request with a tx xdr containing a signature", () =>
       })
     ])
 
-    const signature = keypair.sign(tx.signatureBase())
+    const signature = keypair.sign(tx.hash())
     tx.addSignature(keypair.publicKey(), signature.toString("base64"))
 
     const req = buildTransactionURI(Networks.TESTNET, tx).toString()
@@ -113,16 +113,12 @@ test("cannot submit a request with a tx xdr containing a signature", () =>
         signature: signature.toString("base64")
       })
       .expect(400)
+
+    t.pass()
   }))
 
-test("rejects a request that has already timed out", () =>
+test("rejects a request that has already timed out", t =>
   withApp(async ({ server }) => {
-    const keypair = Keypair.random()
-
-    await prepareTestnetAccount(keypair, 1, [
-      "GBLHBKLMPZ5F5ACPSVDLSE6UUQTGTJJ36RNUN6D2EQU3JHQBG6CMFLXL"
-    ])
-
     const tx = await buildTransaction(
       Networks.TESTNET,
       keypair.publicKey(),
@@ -140,7 +136,7 @@ test("rejects a request that has already timed out", () =>
       }
     )
 
-    const signature = keypair.sign(tx.signatureBase())
+    const signature = keypair.sign(tx.hash())
     const req = buildTransactionURI(Networks.TESTNET, tx).toString()
 
     await request(server)
@@ -152,16 +148,12 @@ test("rejects a request that has already timed out", () =>
         signature: signature.toString("base64")
       })
       .expect(400)
+
+    t.pass()
   }))
 
-test("rejects a transaction with a too-late upper timebound", () =>
+test("rejects a transaction with a too-late upper timebound", t =>
   withApp(async ({ server }) => {
-    const keypair = Keypair.random()
-
-    await prepareTestnetAccount(keypair, 1, [
-      "GBLHBKLMPZ5F5ACPSVDLSE6UUQTGTJJ36RNUN6D2EQU3JHQBG6CMFLXL"
-    ])
-
     const tx = await buildTransaction(
       Networks.TESTNET,
       keypair.publicKey(),
@@ -179,7 +171,7 @@ test("rejects a transaction with a too-late upper timebound", () =>
       }
     )
 
-    const signature = keypair.sign(tx.signatureBase())
+    const signature = keypair.sign(tx.hash())
     const req = buildTransactionURI(Networks.TESTNET, tx).toString()
 
     await request(server)
@@ -191,4 +183,6 @@ test("rejects a transaction with a too-late upper timebound", () =>
         signature: signature.toString("base64")
       })
       .expect(400)
+
+    t.pass()
   }))

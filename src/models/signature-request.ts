@@ -12,16 +12,13 @@ export interface SignatureRequest {
   hash: string
   req: string
   status: "pending" | "ready" | "submitted" | "failed"
-  created_at: string
-  updated_at: string
-  expires_at: string
+  created_at: Date
+  updated_at: Date
+  expires_at: Date
 }
 
-export type NewSignatureRequest = Omit<
-  SignatureRequest,
-  "created_at" | "updated_at" | "expires_at"
-> &
-  Partial<Pick<SignatureRequest, "expires_at">>
+export type NewSignatureRequest = Omit<SignatureRequest, "created_at" | "updated_at"> &
+  Partial<Pick<SignatureRequest, "created_at" | "updated_at">>
 
 export type SerializedSignatureRequest = ReturnType<typeof serializeSignatureRequest>
 
@@ -39,8 +36,8 @@ export function serializeSignatureRequest(
   signatureRequest: SignatureRequest,
   signers: SerializedSigner[]
 ) {
-  const isStale =
-    signatureRequest.expires_at && new Date(signatureRequest.expires_at).getTime() < Date.now()
+  const isStale = signatureRequest.expires_at && signatureRequest.expires_at.getTime() < Date.now()
+
   return {
     created_at: signatureRequest.created_at,
     cursor: signatureRequest.hash,
@@ -48,7 +45,7 @@ export function serializeSignatureRequest(
     hash: signatureRequest.hash,
     req: signatureRequest.req,
     status: isStale ? "failed" : signatureRequest.status,
-    signed_by: signers.map(signer => signer.account_id),
+    signed_by: signers.map(signer => signer.account_id).sort(), // the .sort() is only to make tests deterministic
     updated_at: signatureRequest.updated_at
   }
 }
@@ -65,7 +62,20 @@ export async function createSignatureRequest(
   }
 
   const { rows } = await client.query(sql`
-    INSERT INTO signature_requests ${spreadInsert(signatureRequest)}
+    INSERT INTO signature_requests
+      ${spreadInsert({
+        ...signatureRequest,
+        hash: signatureRequest.hash.toLowerCase(),
+        created_at: signatureRequest.created_at
+          ? signatureRequest.created_at.toISOString()
+          : undefined,
+        updated_at: signatureRequest.updated_at
+          ? signatureRequest.updated_at.toISOString()
+          : undefined,
+        expires_at: signatureRequest.expires_at
+          ? signatureRequest.expires_at.toISOString()
+          : undefined
+      })}
       RETURNING *
   `)
 
@@ -115,16 +125,28 @@ export async function querySignatureRequestsBySigner(
   accountIDs: string[],
   queryOptions: QueryOptions = {}
 ) {
+  const requestAtCursor = queryOptions.cursor
+    ? await querySignatureRequestByHash(client, queryOptions.cursor)
+    : null
+
+  if (queryOptions.cursor && !requestAtCursor) {
+    console.log(">", queryOptions.cursor)
+    console.log(">", (await client.query(sql`SELECT hash FROM signature_requests`)).rows)
+    throw Error(`Cannot find a signature request matching the cursor hash.`)
+  }
+
   const { rows } = await client.query(sql`
-    SELECT DISTINCT signature_requests.*
+    WITH signature_request_ids AS (
+      SELECT DISTINCT signature_request AS id
+        FROM signers
+        WHERE account_id = ANY(${accountIDs})
+    )
+    SELECT DISTINCT *
       FROM signature_requests
-        LEFT JOIN signers ON (signature_requests.id = signers.signature_request)
-      WHERE (
-        signers.account_id = ANY(${accountIDs}) OR
-        signature_requests.source_account_id = ANY(${accountIDs})
-      )
-        AND created_at > ${new Date(queryOptions.cursor || 0)}
-        AND completed_at IS NULL
+      WHERE id IN (SELECT id FROM signature_request_ids)
+        AND created_at > ${
+          requestAtCursor ? requestAtCursor.created_at.toISOString() : "1970-01-01T00:00:00Z"
+        }
       ORDER BY signature_requests.created_at ASC
       LIMIT ${queryOptions.limit || 100}
   `)

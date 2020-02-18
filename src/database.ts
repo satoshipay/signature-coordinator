@@ -35,7 +35,6 @@ pgTypes.setTypeParser(TIMESTAMP_OID, (value: string | null) => {
 
 export async function connectToDatabase() {
   try {
-    console.debug("Checking database connection...")
     await Promise.all([database.connect(), notificationsSubscription.connect()])
     await Promise.race([
       // it's fine if the query resolves to null
@@ -44,7 +43,6 @@ export async function connectToDatabase() {
         throw new Error("Database connection test query timed out.")
       })
     ])
-    console.debug("Database connection ok.")
   } catch (error) {
     throw new Error(
       `Cannot connect to database ${config.pgdatabase}@${config.pghost}: ${error.message}`

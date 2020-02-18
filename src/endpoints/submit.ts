@@ -43,7 +43,7 @@ export async function submitTransaction(signatureRequestHash: string) {
   const uri = parseStellarUri(signatureRequest.req) as TransactionStellarUri
 
   const horizon = getHorizon(uri.networkPassphrase as Networks)
-  const transaction = new Transaction(uri.xdr)
+  const transaction = new Transaction(uri.xdr, uri.networkPassphrase)
 
   for (const signature of signatures) {
     transaction.addSignature(signature.signer_account_id, signature.signature)
@@ -58,6 +58,7 @@ export async function submitTransaction(signatureRequestHash: string) {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"
         },
+        timeout: 15_000,
         validateStatus: () => true
       }
     )
@@ -65,11 +66,17 @@ export async function submitTransaction(signatureRequestHash: string) {
     submissionURL = String(new URL("/transactions", String(horizon.serverURL)))
     submission = axios.post(
       submissionURL,
-      { tx: transaction.toEnvelope().toXDR("base64") },
+      `tx=${encodeURIComponent(
+        transaction
+          .toEnvelope()
+          .toXDR()
+          .toString("base64")
+      )}`,
       {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"
         },
+        timeout: 15_000,
         validateStatus: () => true
       }
     )
@@ -90,7 +97,6 @@ export async function submitTransaction(signatureRequestHash: string) {
     const serialized = await serializeSignatureRequestAndSigners(signatureRequest)
     await notifySignatureRequestUpdate(serialized, signerAccountIDs)
 
-    // TODO: Don't forget to proxy!
     return [response, submissionURL] as const
   } catch (error) {
     await failSignatureRequest(database, signatureRequest.id, error)

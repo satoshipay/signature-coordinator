@@ -17,7 +17,7 @@ export interface SignerSeed {
 }
 
 interface Seed {
-  request: Omit<SignatureRequest, "expires_at"> & { expires_at?: string | null }
+  request: Omit<SignatureRequest, "expires_at"> & { expires_at?: Date | null }
   signatures: Array<{
     signer: string
     xdr: string
@@ -41,7 +41,8 @@ export function seedSignatureRequests(database: Pool, seeds: Seed[]) {
       const timeBounds = tx.timeBounds || { maxTime: String(Date.now() + 60_000) }
 
       const expiresAt =
-        seed.request.expires_at || new Date(Number.parseInt(timeBounds.maxTime, 10)).toISOString()
+        seed.request.expires_at || new Date(Number.parseInt(timeBounds.maxTime, 10) * 1000)
+
       const signatureRequest = await createSignatureRequest(database, {
         ...seed.request,
         expires_at: expiresAt
