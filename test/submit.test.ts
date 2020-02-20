@@ -1,9 +1,10 @@
 import test from "ava"
 import { createHash } from "crypto"
-import { Asset, Keypair, Networks, Operation } from "stellar-sdk"
+import { Asset, Keypair, Networks, Operation, Transaction } from "stellar-sdk"
 import request from "supertest"
 import { withApp } from "./_helpers/bootstrap"
 import { seedSignatureRequests } from "./_helpers/seed"
+import { createCallbackEndpoint } from "./_helpers/server"
 import {
   buildTransaction,
   buildTransactionURI,
@@ -85,4 +86,65 @@ test("can submit a sufficiently signed tx to horizon", t =>
     t.true(signatureRequest!.updated_at.getTime() > Date.now() - 1000)
   }))
 
-test.todo("can submit a sufficiently signed tx to an arbitrary URL")
+test("can submit a sufficiently signed tx to an arbitrary URL", t =>
+  withApp(async ({ database, server }) => {
+    const tx = await buildTransaction(Networks.TESTNET, source.publicKey(), [
+      Operation.payment({
+        amount: "1.0",
+        asset: Asset.native(),
+        destination: destination.publicKey()
+      })
+    ])
+
+    const endpoint = createCallbackEndpoint("/custom-tx-submission", (xdr, res) => {
+      res.write("Received signed transaction: " + xdr)
+      res.end()
+    })
+
+    const uri = buildTransactionURI(Networks.TESTNET, tx)
+    uri.callback = endpoint.url
+    const req = uri.toString()
+
+    await seedSignatureRequests(database, [
+      {
+        request: {
+          id: "ae4fb902-f02a-4f3f-b5d1-c9221b7cb40c",
+          hash: sha256(req),
+          created_at: new Date("2019-12-03T12:00:00Z"),
+          updated_at: new Date("2019-12-03T12:10:00Z"),
+          expires_at: null,
+          req,
+          status: "pending"
+        } as const,
+        signatures: [
+          {
+            signer: source.publicKey(),
+            xdr: source.sign(tx.hash()).toString("base64")
+          },
+          {
+            signer: randomCosigner.publicKey(),
+            xdr: randomCosigner.sign(tx.hash()).toString("base64")
+          }
+        ]
+      }
+    ])
+
+    const signedTxXdr = (() => {
+      const signed = new Transaction(uri.xdr, Networks.TESTNET)
+      signed.sign(source)
+      signed.sign(randomCosigner)
+      return signed
+        .toEnvelope()
+        .toXDR()
+        .toString("base64")
+    })()
+
+    const response = await request(server)
+      .post(`/submit/${sha256(req)}`)
+      .expect(200)
+
+    t.is(response.get("X-Submitted-To"), endpoint.url)
+    t.deepEqual(endpoint.captured(), [signedTxXdr])
+
+    t.is(response.text, `Received signed transaction: ${signedTxXdr}`)
+  }))

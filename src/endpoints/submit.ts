@@ -53,7 +53,12 @@ export async function submitTransaction(signatureRequestHash: string) {
     submissionURL = uri.callback
     submission = axios.post(
       uri.callback,
-      { xdr: transaction.toEnvelope().toXDR("base64") },
+      `xdr=${encodeURIComponent(
+        transaction
+          .toEnvelope()
+          .toXDR()
+          .toString("base64")
+      )}`,
       {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"
