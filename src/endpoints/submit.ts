@@ -63,6 +63,7 @@ export async function submitTransaction(signatureRequestHash: string) {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"
         },
+        maxContentLength: 1024 * 1024,
         timeout: 15_000,
         validateStatus: () => true
       }

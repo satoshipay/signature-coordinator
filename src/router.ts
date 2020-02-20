@@ -89,8 +89,6 @@ router.post("/collate/:hash", async ({ params, request, response, throw: fail })
 router.post("/submit/:hash", async ({ params, response }) => {
   const [submissionResponse, submissionURL] = await submitTransaction(params.hash)
 
-  // TODO: Check size of submission response body
-
   response.set("X-Submitted-To", submissionURL)
   response.status = submissionResponse.status
   response.body = submissionResponse.data
