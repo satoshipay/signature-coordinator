@@ -79,8 +79,8 @@ router.post("/collate/:hash", async ({ params, request, response, throw: fail })
   }
 
   const {
-    pubkey = fail("Request body parameter pubkey not set"),
-    signature = fail("Request body parameter signature not set")
+    pubkey = fail(`Request body parameter "pubkey" not set`),
+    signature = fail(`Request body parameter "signature" not set`)
   } = request.body
 
   response.body = await collateSignatures(params.hash, signature, pubkey)

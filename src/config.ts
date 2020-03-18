@@ -26,13 +26,13 @@ function getConfig() {
     horizonTestnet: {
       sanitize: sanitize.string
     },
-    maxTxTimeout: {
-      default: 24 * 30 * 3600,
-      sanitize: sanitize.number
-    },
     port: {
       default: 3000,
       sanitize: sanitize.number
+    },
+    txMaxTtl: {
+      default: "30d",
+      sanitize: sanitize.string
     }
   })
 

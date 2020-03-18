@@ -44,7 +44,6 @@ test("can create a request", t =>
     const response = await request(server)
       .post("/create")
       .send({
-        hash: sha256(req),
         pubkey: keypair.publicKey(),
         req,
         signature: signature.toString("base64")
@@ -107,8 +106,7 @@ test("cannot submit a request with a tx xdr containing a signature", t =>
     await request(server)
       .post("/create")
       .send({
-        hash: sha256(req),
-        pibkey: keypair.publicKey(),
+        pubkey: keypair.publicKey(),
         req,
         signature: signature.toString("base64")
       })
@@ -142,8 +140,7 @@ test("rejects a request that has already timed out", t =>
     await request(server)
       .post("/create")
       .send({
-        hash: sha256(req),
-        pibkey: keypair.publicKey(),
+        pubkey: keypair.publicKey(),
         req,
         signature: signature.toString("base64")
       })
@@ -177,8 +174,7 @@ test("rejects a transaction with a too-late upper timebound", t =>
     await request(server)
       .post("/create")
       .send({
-        hash: sha256(req),
-        pibkey: keypair.publicKey(),
+        pubkey: keypair.publicKey(),
         req,
         signature: signature.toString("base64")
       })

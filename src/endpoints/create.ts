@@ -1,9 +1,11 @@
 import { parseStellarUri, TransactionStellarUri } from "@stellarguard/stellar-uri"
 import { createHash } from "crypto"
 import createError from "http-errors"
+import ms from "ms"
 import { Keypair, Networks, Transaction } from "stellar-sdk"
-import uuid from "uuid"
+import UUID from "uuid"
 
+import config from "../config"
 import { transaction } from "../database"
 import { notifyNewSignatureRequest } from "../notifications"
 import { getAllSigners, getAllSources, getHorizon, hasSufficientSignatures } from "../lib/stellar"
@@ -69,12 +71,17 @@ export async function handleSignatureRequestSubmission(
   }
 
   if (!tx.timeBounds || !tx.timeBounds.maxTime) {
-    throw createError(400, "Transaction must have upper timebound set.")
+    throw createError(400, `Transaction must have upper timebound set.`)
+  } else if (Number.parseInt(tx.timeBounds.maxTime, 10) * 1000 > Date.now() + ms(config.txMaxTtl)) {
+    throw createError(
+      400,
+      `Transaction times out too late. Only accepting transactions valid for max. ${config.txMaxTtl}.`
+    )
   }
 
   const { serialized, signers } = await transaction(async client => {
     const signatureRequest = await createSignatureRequest(client, {
-      id: uuid.v4(),
+      id: UUID.v4(),
       hash: hashSignatureRequest(requestURI),
       req: requestURI,
       status: "pending",
