@@ -1,6 +1,6 @@
 import { parseStellarUri, TransactionStellarUri } from "@stellarguard/stellar-uri"
 import { Pool } from "pg"
-import { Transaction, Networks } from "stellar-sdk"
+import { AccountResponse, Transaction, Networks } from "stellar-sdk"
 import { horizonServers } from "../../src/config"
 import { createSignatureRequest, SignatureRequest } from "../../src/models/signature-request"
 import { saveSignature } from "../../src/models/signature"
@@ -27,6 +27,7 @@ interface Seed {
 export function seedSignatureRequests(database: Pool, seeds: Seed[]) {
   return Promise.all(
     seeds.map(async seed => {
+      let sourceAccount: AccountResponse
       let uri: TransactionStellarUri
       let tx: Transaction
 
@@ -37,7 +38,17 @@ export function seedSignatureRequests(database: Pool, seeds: Seed[]) {
         throw Error(`Error parsing Stellar URI or its transaction: ${error.message}`)
       }
 
-      const sourceAccount = await horizonServers.testnet.loadAccount(tx.source)
+      try {
+        const horizon =
+          uri.networkPassphrase === Networks.TESTNET
+            ? horizonServers.testnet
+            : horizonServers.pubnet
+        sourceAccount = await horizon.loadAccount(tx.source)
+      } catch {
+        const network = uri.networkPassphrase || Networks.PUBLIC
+        throw Error(`Account does not exist on the network: ${tx.source} (${network})`)
+      }
+
       const timeBounds = tx.timeBounds || { maxTime: String(Date.now() + 60_000) }
 
       const expiresAt =
