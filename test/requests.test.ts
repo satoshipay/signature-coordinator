@@ -86,7 +86,7 @@ test("can fetch latest requests", t =>
     await seed(database)
 
     const response = await request(server)
-      .get(`/requests/${keypair1.publicKey()}`)
+      .get(`/accounts/${keypair1.publicKey()}/transactions`)
       .expect(200)
 
     t.deepEqual(response.body, [
@@ -123,7 +123,7 @@ test("can fetch latest requests", t =>
     ])
 
     const emptyResponse = await request(server)
-      .get("/requests/GAUS24HFG55JS3XSCGU4A7VRUSZ5LMWTJMBDUPGGOCEFPAWBWRH6WGPU")
+      .get("/accounts/GAUS24HFG55JS3XSCGU4A7VRUSZ5LMWTJMBDUPGGOCEFPAWBWRH6WGPU/transactions")
       .expect(200)
 
     t.deepEqual(emptyResponse.body, [])
@@ -134,7 +134,7 @@ test("can fetch requests with cursor parameter", t =>
     await seed(database)
 
     const response = await request(server)
-      .get(`/requests/${keypair1.publicKey()}`)
+      .get(`/accounts/${keypair1.publicKey()}/transactions`)
       .query({ cursor: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110759" })
       .expect(200)
 
@@ -162,7 +162,7 @@ test("can fetch requests with cursor parameter", t =>
     ])
 
     const emptyResponse = await request(server)
-      .get("/requests/GD73FQ7GIS4NQOO7PJKJWCKYYX5OV27QNAYJVIRHZPXEEF72VR22MLXU")
+      .get("/accounts/GD73FQ7GIS4NQOO7PJKJWCKYYX5OV27QNAYJVIRHZPXEEF72VR22MLXU/transactions")
       .query({ cursor: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110758" })
       .expect(200)
 

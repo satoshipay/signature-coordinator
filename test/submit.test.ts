@@ -75,7 +75,7 @@ test("can submit a sufficiently signed tx to testnet horizon", t =>
     ])
 
     const response = await request(server)
-      .post(`/submit/${sha256(req)}`)
+      .post(`/transactions/${sha256(req)}/submit`)
       .expect(200)
 
     t.is(response.get("X-Submitted-To"), "https://horizon-testnet.stellar.org/transactions")
@@ -150,7 +150,7 @@ test("can submit a sufficiently signed tx to pubnet horizon", t =>
       ])
 
       const response = await request(server)
-        .post(`/submit/${sha256(req)}`)
+        .post(`/transactions/${sha256(req)}/submit`)
         .expect(200)
 
       t.is(response.get("X-Submitted-To"), "https://horizon.stellar.org/transactions")
@@ -223,7 +223,7 @@ test("can submit a sufficiently signed tx to an arbitrary URL", t =>
     })()
 
     const response = await request(server)
-      .post(`/submit/${sha256(req)}`)
+      .post(`/transactions/${sha256(req)}/submit`)
       .expect(200)
 
     t.is(response.get("X-Submitted-To"), endpoint.url)

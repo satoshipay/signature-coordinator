@@ -11,7 +11,7 @@ const ErrorMiddleware = () => async (ctx: Koa.Context, next: () => Promise<any>)
   } catch (error) {
     if (error.status && error.status >= 400 && error.status < 500) {
       const body: any = {
-        message: error && error.message ? error.message : "Unknown error"
+        error: error?.message || "Unknown error"
       }
       for (const prop of ["data", "response"]) {
         if (prop in error) {

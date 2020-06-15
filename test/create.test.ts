@@ -42,7 +42,7 @@ test("can create a request", t =>
     const signature = keypair.sign(tx.hash())
 
     const response = await request(server)
-      .post("/create")
+      .post("/transactions")
       .send({
         pubkey: keypair.publicKey(),
         req,
@@ -104,7 +104,7 @@ test("cannot submit a request with a tx xdr containing a signature", t =>
     const req = buildTransactionURI(Networks.TESTNET, tx).toString()
 
     await request(server)
-      .post("/create")
+      .post("/transactions")
       .send({
         pubkey: keypair.publicKey(),
         req,
@@ -138,7 +138,7 @@ test("rejects a request that has already timed out", t =>
     const req = buildTransactionURI(Networks.TESTNET, tx).toString()
 
     await request(server)
-      .post("/create")
+      .post("/transactions")
       .send({
         pubkey: keypair.publicKey(),
         req,
@@ -172,7 +172,7 @@ test("rejects a transaction with a too-late upper timebound", t =>
     const req = buildTransactionURI(Networks.TESTNET, tx).toString()
 
     await request(server)
-      .post("/create")
+      .post("/transactions")
       .send({
         pubkey: keypair.publicKey(),
         req,

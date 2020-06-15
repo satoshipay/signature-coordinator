@@ -55,7 +55,7 @@ test("can retrieve a pending transaction request's status", t =>
     await seed(database)
 
     const response = await request(server)
-      .get("/status/4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110757")
+      .get("/transactions/4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110757")
       .expect(200)
 
     t.deepEqual(response.body, {
@@ -77,7 +77,7 @@ test("can retrieve a completed transaction request's status", t =>
     await seed(database)
 
     const response = await request(server)
-      .get("/status/4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110758")
+      .get("/transactions/4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110758")
       .expect(200)
 
     t.deepEqual(response.body, {
@@ -99,7 +99,7 @@ test("can retrieve a stale transaction request's status", t =>
     await seed(database)
 
     const response = await request(server)
-      .get("/status/4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110759")
+      .get("/transactions/4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110759")
       .expect(200)
 
     t.deepEqual(response.body, {

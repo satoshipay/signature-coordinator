@@ -67,7 +67,7 @@ test("can collate an additional signature", t =>
     ])
 
     await request(server)
-      .post(`/collate/${sha256(req)}`)
+      .post(`/transactions/${sha256(req)}/signatures`)
       .send({
         pubkey: keypair.publicKey(),
         signature
@@ -130,7 +130,7 @@ test("changes status to 'ready' when sufficiently signed", t =>
     ])
 
     await request(server)
-      .post(`/collate/${sha256(req)}`)
+      .post(`/transactions/${sha256(req)}/signatures`)
       .send({
         pubkey: keypair.publicKey(),
         signature
@@ -176,7 +176,7 @@ test("rejects an invalid signature", t =>
     ])
 
     await request(server)
-      .post(`/collate/${sha256(req)}`)
+      .post(`/transactions/${sha256(req)}/signatures`)
       .send({
         pubkey: keypair.publicKey(),
         signature: badSignature
@@ -225,7 +225,7 @@ test("rejects additional signature for a sufficiently-signed tx", t =>
     ])
 
     await request(server)
-      .post(`/collate/${sha256(req)}`)
+      .post(`/transactions/${sha256(req)}/signatures`)
       .send({
         pubkey: keypair.publicKey(),
         signature

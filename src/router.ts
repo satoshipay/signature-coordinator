@@ -22,17 +22,15 @@ router.use(
   })
 )
 
-router.get("/status/:hash", async ({ params, response }) => {
-  const signatureRequest = await querySignatureRequestByHash(database, params.hash)
-
-  if (!signatureRequest) {
-    throw HttpError(404, `Signature request not found`)
+router.get("/", async ({ response }) => {
+  response.body = {
+    name: pkg.name,
+    version: pkg.version,
+    capabilities: ["transactions"]
   }
-
-  response.body = await serializeSignatureRequestAndSigners(signatureRequest)
 })
 
-router.get("/requests/:accountIDs", async context => {
+router.get("/accounts/:accountIDs/transactions", async context => {
   const { params, query, response, request } = context
 
   const accountIDs = params.accountIDs.split(",")
@@ -50,7 +48,17 @@ router.get("/requests/:accountIDs", async context => {
   }
 })
 
-router.post("/create", async ({ request, response }) => {
+router.get("/transactions/:hash", async ({ params, response }) => {
+  const signatureRequest = await querySignatureRequestByHash(database, params.hash)
+
+  if (!signatureRequest) {
+    throw HttpError(404, `Signature request not found`)
+  }
+
+  response.body = await serializeSignatureRequestAndSigners(signatureRequest)
+})
+
+router.post("/transactions", async ({ request, response }) => {
   if (!request.body || typeof request.body !== "object") {
     throw HttpError(400, "Expected URL-formatted payment request as POST request body.")
   }
@@ -73,20 +81,23 @@ router.post("/create", async ({ request, response }) => {
   response.set("Location", String(new URL(`/status/${signatureRequest.hash}`, config.baseUrl)))
 })
 
-router.post("/collate/:hash", async ({ params, request, response, throw: fail }) => {
-  if (!request.body || typeof request.body !== "object") {
-    throw HttpError(400, "Expected application/x-www-form-urlencoded POST body.")
+router.post(
+  "/transactions/:hash/signatures",
+  async ({ params, request, response, throw: fail }) => {
+    if (!request.body || typeof request.body !== "object") {
+      throw HttpError(400, "Expected application/x-www-form-urlencoded POST body.")
+    }
+
+    const {
+      pubkey = fail(`Request body parameter "pubkey" not set`),
+      signature = fail(`Request body parameter "signature" not set`)
+    } = request.body
+
+    response.body = await collateSignatures(params.hash, signature, pubkey)
   }
+)
 
-  const {
-    pubkey = fail(`Request body parameter "pubkey" not set`),
-    signature = fail(`Request body parameter "signature" not set`)
-  } = request.body
-
-  response.body = await collateSignatures(params.hash, signature, pubkey)
-})
-
-router.post("/submit/:hash", async ({ params, response }) => {
+router.post("/transactions/:hash/submit", async ({ params, response }) => {
   const [submissionResponse, submissionURL] = await submitTransaction(params.hash)
 
   response.set("X-Submitted-To", submissionURL)
@@ -96,13 +107,6 @@ router.post("/submit/:hash", async ({ params, response }) => {
 
 router.get("/status/live", ctx => {
   ctx.status = 200
-})
-
-router.get("/", ctx => {
-  ctx.body = {
-    name: pkg.name,
-    version: pkg.version
-  }
 })
 
 export default router
