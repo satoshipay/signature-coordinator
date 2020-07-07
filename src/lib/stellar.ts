@@ -2,10 +2,6 @@ import { AccountResponse, Horizon, Keypair, Networks, Server, Transaction, xdr }
 
 import { horizonServers } from "../config"
 
-interface SignatureWithHint extends xdr.DecoratedSignature {
-  hint(): Buffer
-}
-
 const dedupe = <T>(array: T[]) => [...new Set(array)]
 const sum = (array: number[]) => array.reduce((total, element) => total + element, 0)
 
@@ -48,7 +44,7 @@ export function signatureMatchesPublicKey(
   signature: xdr.DecoratedSignature,
   publicKey: string
 ): boolean {
-  const hint = (signature as SignatureWithHint).hint()
+  const hint = signature.hint()
   const keypair = Keypair.fromPublicKey(publicKey)
 
   return hint.equals(keypair.signatureHint() as Buffer)

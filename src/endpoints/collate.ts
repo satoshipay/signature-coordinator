@@ -1,9 +1,10 @@
 import { parseStellarUri, TransactionStellarUri } from "@stellarguard/stellar-uri"
 import HttpError from "http-errors"
-import { Keypair, Networks, Transaction } from "stellar-sdk"
+import { Networks, Transaction, Utils } from "stellar-sdk"
 
 import { database } from "../database"
 import { hasSufficientSignatures } from "../lib/records"
+import { signatureMatchesPublicKey } from "../lib/stellar"
 import {
   querySignatureRequestByHash,
   updateSignatureRequestStatus
@@ -16,11 +17,7 @@ import { serializeSignatureRequestAndSigners } from "./query"
 
 const dedupe = <T>(array: T[]): T[] => Array.from(new Set(array))
 
-export async function collateSignatures(
-  signatureRequestHash: string,
-  signatureXDR: string,
-  signerPubKey: string
-) {
+export async function collateSignatures(signatureRequestHash: string, signatureXDR: string) {
   const signatureRequest = await querySignatureRequestByHash(database, signatureRequestHash)
 
   if (!signatureRequest) {
@@ -35,19 +32,23 @@ export async function collateSignatures(
 
   const signers = await queryAllSignatureRequestSigners(database, signatureRequest.id)
   const signerAccountIDs = dedupe(signers.map(signer => signer.account_id))
-
-  if (!signerAccountIDs.includes(signerPubKey)) {
-    throw HttpError(400, `Will not collate signature of unexpected signer.`)
-  }
-
-  const signerKey = Keypair.fromPublicKey(signerPubKey)
   const uri = parseStellarUri(signatureRequest.req) as TransactionStellarUri
 
   const network = (uri.networkPassphrase || Networks.PUBLIC) as Networks
   const tx = new Transaction(uri.xdr, network)
 
-  if (!signerKey.verify(tx.hash(), Buffer.from(signatureXDR, "base64"))) {
-    throw HttpError(400, "Invalid signature")
+  if (tx.signatures.length !== 1) {
+    throw Error(`Expected exactly one signature on the transaction. Got ${tx.signatures.length}.`)
+  }
+
+  const signature = tx.signatures[0]
+  const signerPubKey = signerAccountIDs.find(pubKey => signatureMatchesPublicKey(signature, pubKey))
+
+  if (!signerPubKey || !Utils.verifyTxSignedBy(tx, signerPubKey)) {
+    throw HttpError(
+      400,
+      `The signature on the transaction does not seem to belong to a valid signer.`
+    )
   }
 
   const signatures = await querySignatureRequestSignatures(database, signatureRequest.id)

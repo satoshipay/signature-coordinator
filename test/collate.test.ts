@@ -44,8 +44,11 @@ test("can collate an additional signature", t =>
         destination: "GD73FQ7GIS4NQOO7PJKJWCKYYX5OV27QNAYJVIRHZPXEEF72VR22MLXU"
       })
     ])
-    const req = buildTransactionURI(Networks.TESTNET, tx).toString()
+
     const signature = keypair.sign(tx.hash()).toString("base64")
+    tx.addSignature(keypair.publicKey(), signature)
+
+    const req = buildTransactionURI(Networks.TESTNET, tx).toString()
 
     await seedSignatureRequests(database, [
       {
@@ -66,13 +69,13 @@ test("can collate an additional signature", t =>
       }
     ])
 
-    await request(server)
+    const response = await request(server)
       .post(`/transactions/${sha256(req)}/signatures`)
       .send({
-        pubkey: keypair.publicKey(),
-        signature
+        xdr: tx.toEnvelope().toXDR("base64")
       })
-      .expect(204)
+    // .expect(204)
+    t.is(response.status, 204, response.body)
 
     // TODO: Check response body
 
@@ -107,8 +110,8 @@ test("changes status to 'ready' when sufficiently signed", t =>
       })
     ])
 
+    tx.sign(keypair)
     const req = buildTransactionURI(Networks.TESTNET, tx).toString()
-    const signature = keypair.sign(tx.hash()).toString("base64")
 
     await seedSignatureRequests(database, [
       {
@@ -132,8 +135,7 @@ test("changes status to 'ready' when sufficiently signed", t =>
     await request(server)
       .post(`/transactions/${sha256(req)}/signatures`)
       .send({
-        pubkey: keypair.publicKey(),
-        signature
+        xdr: tx.toEnvelope().toXDR("base64")
       })
       .expect(204)
 
@@ -155,6 +157,8 @@ test("rejects an invalid signature", t =>
     const badSignature = keypair
       .sign(Buffer.concat([tx.hash(), Buffer.alloc(4)]))
       .toString("base64")
+
+    tx.addSignature(keypair.publicKey(), badSignature)
 
     await seedSignatureRequests(database, [
       {
@@ -178,8 +182,7 @@ test("rejects an invalid signature", t =>
     await request(server)
       .post(`/transactions/${sha256(req)}/signatures`)
       .send({
-        pubkey: keypair.publicKey(),
-        signature: badSignature
+        xdr: tx.toEnvelope().toXDR("base64")
       })
       .expect(400)
 
@@ -198,8 +201,8 @@ test("rejects additional signature for a sufficiently-signed tx", t =>
       })
     ])
 
+    tx.sign(keypair)
     const req = buildTransactionURI(Networks.TESTNET, tx).toString()
-    const signature = keypair.sign(tx.hash()).toString("base64")
 
     await seedSignatureRequests(database, [
       {
@@ -227,8 +230,7 @@ test("rejects additional signature for a sufficiently-signed tx", t =>
     await request(server)
       .post(`/transactions/${sha256(req)}/signatures`)
       .send({
-        pubkey: keypair.publicKey(),
-        signature
+        xdr: tx.toEnvelope().toXDR("base64")
       })
       .expect(400)
 

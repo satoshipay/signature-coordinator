@@ -40,7 +40,7 @@ export async function streamSignatureRequests(
         if (signers.some(pubKey => subscribedAccountIDs.includes(pubKey))) {
           context.sendEvent(
             createServerSentEvent(
-              "request:added",
+              "transaction:added",
               signatureRequest.created_at.toISOString(),
               signatureRequest
             )
@@ -53,7 +53,7 @@ export async function streamSignatureRequests(
         if (signers.some(pubKey => subscribedAccountIDs.includes(pubKey))) {
           context.sendEvent(
             createServerSentEvent(
-              "request:updated",
+              "transaction:updated",
               signatureRequest.created_at.toISOString(),
               signatureRequest
             )

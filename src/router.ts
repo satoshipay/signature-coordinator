@@ -76,9 +76,11 @@ router.post("/transactions", async ({ request, response }) => {
   }
 
   const signatureRequest = await handleSignatureRequestSubmission(req, signature, pubkey)
+  const transactionUrl = String(new URL(`/status/${signatureRequest.hash}`, config.baseUrl))
 
-  response.status = 201
-  response.set("Location", String(new URL(`/status/${signatureRequest.hash}`, config.baseUrl)))
+  response.body = {
+    transactionUrl
+  }
 })
 
 router.post(
@@ -88,12 +90,9 @@ router.post(
       throw HttpError(400, "Expected application/x-www-form-urlencoded POST body.")
     }
 
-    const {
-      pubkey = fail(`Request body parameter "pubkey" not set`),
-      signature = fail(`Request body parameter "signature" not set`)
-    } = request.body
+    const { xdr = fail(`Request body parameter "xdr" not set`) } = request.body
 
-    response.body = await collateSignatures(params.hash, signature, pubkey)
+    response.body = await collateSignatures(params.hash, xdr)
   }
 )
 

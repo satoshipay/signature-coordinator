@@ -48,9 +48,9 @@ test("can create a request", t =>
         req,
         signature: signature.toString("base64")
       })
-      .expect(201)
+      .expect(200)
 
-    t.is(response.header.location, `http://localhost:3000/status/${sha256(req)}`)
+    t.is(response.body.transactionUrl, `http://localhost:3000/status/${sha256(req)}`)
 
     const record = await querySignatureRequestByHash(database, sha256(req))
     if (!record) {

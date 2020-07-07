@@ -43,7 +43,7 @@ export async function submitTransaction(signatureRequestHash: string) {
   const uri = parseStellarUri(signatureRequest.req) as TransactionStellarUri
 
   const horizon = getHorizon(uri.networkPassphrase as Networks)
-  const transaction = new Transaction(uri.xdr, uri.networkPassphrase)
+  const transaction = new Transaction(uri.xdr, uri.networkPassphrase || Networks.PUBLIC)
 
   for (const signature of signatures) {
     transaction.addSignature(signature.signer_account_id, signature.signature)
