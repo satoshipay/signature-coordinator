@@ -16,6 +16,7 @@ async function launch() {
       console.error("Startup error", error)
       process.exit(1)
     } else {
+      console.info(`Signing key: ${config.signingKeypair.publicKey()}`)
       console.info(`Listening on port ${config.port}`)
     }
   })

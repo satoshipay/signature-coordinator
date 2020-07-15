@@ -1,5 +1,5 @@
 import { parse, sanitize } from "envfefe"
-import { Server } from "stellar-sdk"
+import { Keypair, Server } from "stellar-sdk"
 
 export type Config = ReturnType<typeof getConfig>
 
@@ -30,13 +30,22 @@ function getConfig() {
       default: 3000,
       sanitize: sanitize.number
     },
+    serveStellarToml: {
+      sanitize: sanitize.boolean
+    },
+    signingSecretKey: {
+      sanitize: sanitize.string
+    },
     txMaxTtl: {
       default: "30d",
       sanitize: sanitize.string
     }
   })
 
-  return parsedConfig
+  return {
+    ...parsedConfig,
+    signingKeypair: Keypair.fromSecret(parsedConfig.signingSecretKey)
+  }
 }
 
 const config = getConfig()

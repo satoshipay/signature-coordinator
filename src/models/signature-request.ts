@@ -1,5 +1,6 @@
 import { spreadInsert, sql } from "squid/pg"
 import { DBClient } from "../database"
+import { Signature } from "./signature"
 
 export interface SignatureRequestError {
   message: string
@@ -11,6 +12,7 @@ export interface SignatureRequest {
   error?: SignatureRequestError
   hash: string
   req: string
+  source_req: string
   status: "pending" | "ready" | "submitted" | "failed"
   created_at: Date
   updated_at: Date
@@ -34,19 +36,25 @@ interface SerializedSigner {
 
 export function serializeSignatureRequest(
   signatureRequest: SignatureRequest,
-  signers: SerializedSigner[]
+  signers: SerializedSigner[],
+  signatures: Signature[]
 ) {
   const isStale = signatureRequest.expires_at && signatureRequest.expires_at.getTime() < Date.now()
+  const keysWhoSignedAlready = signatures.map(signature => signature.signer_account_id)
+
+  // the .sort() is only to make tests deterministic
+  const signerAccountIDs = signers.map(signer => signer.account_id).sort()
 
   return {
-    created_at: signatureRequest.created_at,
+    created_at: signatureRequest.created_at.toISOString(),
     cursor: signatureRequest.hash,
     error: isStale ? { message: "Transaction is stale" } : signatureRequest.error,
     hash: signatureRequest.hash,
     req: signatureRequest.req,
     status: isStale ? "failed" : signatureRequest.status,
-    signed_by: signers.map(signer => signer.account_id).sort(), // the .sort() is only to make tests deterministic
-    updated_at: signatureRequest.updated_at
+    signed_by: signerAccountIDs.filter(signer => keysWhoSignedAlready.includes(signer)),
+    signers: signerAccountIDs,
+    updated_at: signatureRequest.updated_at?.toISOString()
   }
 }
 
@@ -57,7 +65,7 @@ export async function createSignatureRequest(
   if (!signatureRequest.expires_at) {
     // Reasoning: We want to be able to remove those txs safely from the database later
     throw Error(
-      `Transaction must have an upper timebound set. Signature request hash: ${signatureRequest.hash}`
+      `Transaction must have an upper timebound set. Transaction hash: ${signatureRequest.hash}`
     )
   }
 
@@ -106,7 +114,7 @@ export async function updateSignatureRequestStatus(
   `)
 
   if (rowCount !== 1) {
-    throw new Error(`Signature request could not be marked as completed, probably not found: ${id}`)
+    throw new Error(`Transaction could not be marked as completed, probably not found: ${id}`)
   }
 }
 
@@ -130,9 +138,7 @@ export async function querySignatureRequestsBySigner(
     : null
 
   if (queryOptions.cursor && !requestAtCursor) {
-    console.log(">", queryOptions.cursor)
-    console.log(">", (await client.query(sql`SELECT hash FROM signature_requests`)).rows)
-    throw Error(`Cannot find a signature request matching the cursor hash.`)
+    throw Error(`Cannot find a signature request matching the cursor hash: ${queryOptions.cursor}`)
   }
 
   const { rows } = await client.query(sql`
@@ -147,6 +153,7 @@ export async function querySignatureRequestsBySigner(
         AND created_at > ${
           requestAtCursor ? requestAtCursor.created_at.toISOString() : "1970-01-01T00:00:00Z"
         }
+        AND expires_at > NOW()
       ORDER BY signature_requests.created_at ASC
       LIMIT ${queryOptions.limit || 100}
   `)

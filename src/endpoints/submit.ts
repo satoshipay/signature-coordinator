@@ -24,7 +24,7 @@ export async function submitTransaction(signatureRequestHash: string) {
   const signatureRequest = await querySignatureRequestByHash(database, signatureRequestHash)
 
   if (!signatureRequest) {
-    throw HttpError(404, `Signature request not found: ${signatureRequestHash}`)
+    throw HttpError(404, `Transaction not found: ${signatureRequestHash}`)
   }
 
   const signatures = await querySignatureRequestSignatures(database, signatureRequest.id)
@@ -40,7 +40,7 @@ export async function submitTransaction(signatureRequestHash: string) {
   let submission: AxiosPromise<any>
   let submissionURL: string
 
-  const uri = parseStellarUri(signatureRequest.req) as TransactionStellarUri
+  const uri = parseStellarUri(signatureRequest.source_req) as TransactionStellarUri
 
   const horizon = getHorizon(uri.networkPassphrase as Networks)
   const transaction = new Transaction(uri.xdr, uri.networkPassphrase || Networks.PUBLIC)
@@ -50,9 +50,9 @@ export async function submitTransaction(signatureRequestHash: string) {
   }
 
   if (uri.callback) {
-    submissionURL = uri.callback
+    submissionURL = uri.callback.replace(/^url:/, "")
     submission = axios.post(
-      uri.callback,
+      submissionURL,
       `xdr=${encodeURIComponent(
         transaction
           .toEnvelope()
@@ -99,6 +99,9 @@ export async function submitTransaction(signatureRequestHash: string) {
       )
       await failSignatureRequest(database, signatureRequest.id, error)
     }
+
+    // Mutate our local object, too, or the data in the response will be stale
+    signatureRequest.status = "submitted"
 
     const serialized = await serializeSignatureRequestAndSigners(signatureRequest)
     await notifySignatureRequestUpdate(serialized, signerAccountIDs)

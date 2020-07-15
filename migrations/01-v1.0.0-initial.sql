@@ -4,6 +4,7 @@ CREATE TABLE signature_requests (
   id UUID PRIMARY KEY,
   hash VARCHAR(64) UNIQUE NOT NULL,
   req TEXT NOT NULL,
+  source_req TEXT NOT NULL,
   status signature_request_status_type DEFAULT 'pending' NOT NULL,
   error JSONB DEFAULT NULL,
   created_at TIMESTAMP DEFAULT NOW() NOT NULL,

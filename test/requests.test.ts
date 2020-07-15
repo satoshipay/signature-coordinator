@@ -98,7 +98,8 @@ test("can fetch latest requests", t =>
         status: "submitted",
         created_at: "2019-12-03T11:00:00.000Z",
         updated_at: "2019-12-03T11:00:00.000Z",
-        signed_by: [keypair1.publicKey(), keypair2.publicKey()].sort()
+        signed_by: [keypair1.publicKey(), keypair2.publicKey()].sort(),
+        signers: [keypair1.publicKey(), keypair2.publicKey()].sort()
       },
       {
         cursor: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110757",
@@ -108,7 +109,8 @@ test("can fetch latest requests", t =>
         status: "pending",
         created_at: "2019-12-03T12:00:00.000Z",
         updated_at: "2019-12-03T12:10:00.000Z",
-        signed_by: []
+        signed_by: [],
+        signers: [keypair1.publicKey(), keypair2.publicKey()].sort()
       },
       {
         cursor: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110758",
@@ -118,7 +120,8 @@ test("can fetch latest requests", t =>
         status: "submitted",
         created_at: "2019-12-03T12:05:00.000Z",
         updated_at: "2019-12-03T12:05:00.000Z",
-        signed_by: [keypair1.publicKey()]
+        signed_by: [keypair1.publicKey()],
+        signers: [keypair1.publicKey(), keypair2.publicKey()].sort()
       }
     ])
 
@@ -147,7 +150,8 @@ test("can fetch requests with cursor parameter", t =>
         status: "pending",
         created_at: "2019-12-03T12:00:00.000Z",
         updated_at: "2019-12-03T12:10:00.000Z",
-        signed_by: []
+        signed_by: [],
+        signers: [keypair1.publicKey(), keypair2.publicKey()].sort()
       },
       {
         cursor: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110758",
@@ -157,7 +161,8 @@ test("can fetch requests with cursor parameter", t =>
         status: "submitted",
         created_at: "2019-12-03T12:05:00.000Z",
         updated_at: "2019-12-03T12:05:00.000Z",
-        signed_by: [keypair1.publicKey()]
+        signed_by: [keypair1.publicKey()],
+        signers: [keypair1.publicKey(), keypair2.publicKey()].sort()
       }
     ])
 

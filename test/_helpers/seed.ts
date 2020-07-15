@@ -17,7 +17,10 @@ export interface SignerSeed {
 }
 
 interface Seed {
-  request: Omit<SignatureRequest, "expires_at"> & { expires_at?: Date | null }
+  request: Omit<SignatureRequest, "expires_at" | "source_req"> & {
+    expires_at?: Date | null
+    source_req?: string
+  }
   signatures: Array<{
     signer: string
     xdr: string
@@ -44,8 +47,9 @@ export function seedSignatureRequests(database: Pool, seeds: Seed[]) {
             ? horizonServers.testnet
             : horizonServers.pubnet
         sourceAccount = await horizon.loadAccount(tx.source)
-      } catch {
+      } catch (error) {
         const network = uri.networkPassphrase || Networks.PUBLIC
+        console.error(error)
         throw Error(`Account does not exist on the network: ${tx.source} (${network})`)
       }
 
@@ -56,7 +60,8 @@ export function seedSignatureRequests(database: Pool, seeds: Seed[]) {
 
       const signatureRequest = await createSignatureRequest(database, {
         ...seed.request,
-        expires_at: expiresAt
+        expires_at: expiresAt,
+        source_req: seed.request.source_req || seed.request.req
       })
 
       await saveSourceAccount(database, {

@@ -9,8 +9,8 @@ export interface NotificationPayload {
 }
 
 interface NotificationEvents {
-  "signature-request:new": (notification: NotificationPayload) => void
-  "signature-request:updated": (notification: NotificationPayload) => void
+  "transaction:added": (notification: NotificationPayload) => void
+  "transaction:updated": (notification: NotificationPayload) => void
 }
 
 export const notifications = (notificationsSubscription.notifications as any) as TypedEmitter<
@@ -18,15 +18,15 @@ export const notifications = (notificationsSubscription.notifications as any) as
 >
 
 export function subscribeToChannels() {
-  notificationsSubscription.listenTo("signature-request:new")
-  notificationsSubscription.listenTo("signature-request:updated")
+  notificationsSubscription.listenTo("transaction:added")
+  notificationsSubscription.listenTo("transaction:updated")
 }
 
 export async function notifyNewSignatureRequest(
   signatureRequest: SerializedSignatureRequest,
   signers: string[]
 ) {
-  return notificationsSubscription.notify("signature-request:new", {
+  return notificationsSubscription.notify("transaction:added", {
     signatureRequest,
     signers
   })
@@ -36,7 +36,7 @@ export async function notifySignatureRequestUpdate(
   signatureRequest: SerializedSignatureRequest,
   signers: string[]
 ) {
-  return notificationsSubscription.notify("signature-request:updated", {
+  return notificationsSubscription.notify("transaction:updated", {
     signatureRequest,
     signers
   })

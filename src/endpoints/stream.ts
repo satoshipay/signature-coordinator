@@ -4,10 +4,10 @@ import { streamEvents, StreamContext } from "http-event-stream"
 import { notifications, NotificationPayload } from "../notifications"
 import { querySignatureRequests } from "./query"
 
-function createServerSentEvent(eventName: string, timestamp: string | number, data: any) {
+function createServerSentEvent(eventName: string, id: string | number, data: any) {
   return {
     event: eventName,
-    id: String(new Date(timestamp).getTime()),
+    id: String(id),
     data: JSON.stringify(data)
   }
 }
@@ -19,15 +19,14 @@ export async function streamSignatureRequests(
 ) {
   streamEvents(req, res, {
     async fetch(lastEventId: string) {
-      const since = new Date(Number.parseInt(lastEventId, 10)).toISOString()
       const serializedSignatureRequests = await querySignatureRequests(subscribedAccountIDs, {
-        cursor: since
+        cursor: lastEventId
       })
 
       return serializedSignatureRequests.map(serializedSignatureRequest => {
         return createServerSentEvent(
           "signature-request",
-          serializedSignatureRequest.created_at.toISOString(),
+          serializedSignatureRequest.hash,
           serializedSignatureRequest
         )
       })
@@ -39,11 +38,7 @@ export async function streamSignatureRequests(
 
         if (signers.some(pubKey => subscribedAccountIDs.includes(pubKey))) {
           context.sendEvent(
-            createServerSentEvent(
-              "transaction:added",
-              signatureRequest.created_at.toISOString(),
-              signatureRequest
-            )
+            createServerSentEvent("transaction:added", signatureRequest.hash, signatureRequest)
           )
         }
       }
@@ -52,21 +47,17 @@ export async function streamSignatureRequests(
 
         if (signers.some(pubKey => subscribedAccountIDs.includes(pubKey))) {
           context.sendEvent(
-            createServerSentEvent(
-              "transaction:updated",
-              signatureRequest.created_at.toISOString(),
-              signatureRequest
-            )
+            createServerSentEvent("transaction:updated", signatureRequest.hash, signatureRequest)
           )
         }
       }
 
-      notifications.on("signature-request:new", onNewSignatureRequest)
-      notifications.on("signature-request:updated", onUpdatedSignatureRequest)
+      notifications.on("transaction:added", onNewSignatureRequest)
+      notifications.on("transaction:updated", onUpdatedSignatureRequest)
 
       const unsubscribe = () => {
-        notifications.removeListener("signature-request:new", onNewSignatureRequest)
-        notifications.removeListener("signature-request:updated", onUpdatedSignatureRequest)
+        notifications.removeListener("transaction:added", onNewSignatureRequest)
+        notifications.removeListener("transaction:updated", onUpdatedSignatureRequest)
       }
       return unsubscribe
     }

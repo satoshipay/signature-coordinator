@@ -5,7 +5,7 @@ import Router from "koa-router"
 import config from "./config"
 import { database } from "./database"
 import { collateSignatures } from "./endpoints/collate"
-import { handleSignatureRequestSubmission } from "./endpoints/create"
+import { handleTransactionCreation } from "./endpoints/create"
 import { querySignatureRequests, serializeSignatureRequestAndSigners } from "./endpoints/query"
 import { streamSignatureRequests } from "./endpoints/stream"
 import { submitTransaction } from "./endpoints/submit"
@@ -48,11 +48,32 @@ router.get("/accounts/:accountIDs/transactions", async context => {
   }
 })
 
+router.post(
+  "/transactions/:hash/signatures",
+  async ({ params, request, response, throw: fail }) => {
+    if (!request.body || typeof request.body !== "object") {
+      throw HttpError(400, "Expected application/x-www-form-urlencoded POST body.")
+    }
+
+    const { xdr = fail(`Request body parameter "xdr" not set`) } = request.body
+
+    response.body = await collateSignatures(params.hash, xdr)
+  }
+)
+
+router.post("/transactions/:hash/submit", async ({ params, response }) => {
+  const [submissionResponse, submissionURL] = await submitTransaction(params.hash)
+
+  response.set("X-Submitted-To", submissionURL)
+  response.status = submissionResponse.status
+  response.body = submissionResponse.data
+})
+
 router.get("/transactions/:hash", async ({ params, response }) => {
   const signatureRequest = await querySignatureRequestByHash(database, params.hash)
 
   if (!signatureRequest) {
-    throw HttpError(404, `Signature request not found`)
+    throw HttpError(404, `Transaction not found`)
   }
 
   response.body = await serializeSignatureRequestAndSigners(signatureRequest)
@@ -75,37 +96,24 @@ router.post("/transactions", async ({ request, response }) => {
     throw HttpError(400, `Missing POST parameter "signature"`)
   }
 
-  const signatureRequest = await handleSignatureRequestSubmission(req, signature, pubkey)
-  const transactionUrl = String(new URL(`/status/${signatureRequest.hash}`, config.baseUrl))
-
-  response.body = {
-    transactionUrl
-  }
-})
-
-router.post(
-  "/transactions/:hash/signatures",
-  async ({ params, request, response, throw: fail }) => {
-    if (!request.body || typeof request.body !== "object") {
-      throw HttpError(400, "Expected application/x-www-form-urlencoded POST body.")
-    }
-
-    const { xdr = fail(`Request body parameter "xdr" not set`) } = request.body
-
-    response.body = await collateSignatures(params.hash, xdr)
-  }
-)
-
-router.post("/transactions/:hash/submit", async ({ params, response }) => {
-  const [submissionResponse, submissionURL] = await submitTransaction(params.hash)
-
-  response.set("X-Submitted-To", submissionURL)
-  response.status = submissionResponse.status
-  response.body = submissionResponse.data
+  response.body = await handleTransactionCreation(req, signature, pubkey)
 })
 
 router.get("/status/live", ctx => {
   ctx.status = 200
 })
+
+if (config.serveStellarToml) {
+  console.debug(`Serving placeholder stellar.toml`)
+
+  router.get("/.well-known/stellar.toml", async ({ response }) => {
+    response.body = `
+      MULTISIG_ENDPOINT=${JSON.stringify(config.baseUrl)}
+    `
+      .split("\n")
+      .map(line => line.trim())
+      .join("\n")
+  })
+}
 
 export default router

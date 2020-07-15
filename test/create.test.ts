@@ -39,18 +39,27 @@ test("can create a request", t =>
     ])
 
     const req = buildTransactionURI(Networks.TESTNET, tx).toString()
-    const signature = keypair.sign(tx.hash())
+    const signature = tx.getKeypairSignature(keypair)
 
     const response = await request(server)
       .post("/transactions")
       .send({
         pubkey: keypair.publicKey(),
         req,
-        signature: signature.toString("base64")
+        signature
       })
       .expect(200)
 
-    t.is(response.body.transactionUrl, `http://localhost:3000/status/${sha256(req)}`)
+    t.is(response.body.hash, sha256(req))
+    t.true(
+      response.body.req.includes(
+        `callback=${encodeURIComponent(
+          `url:http://localhost:3000/transactions/${response.body.hash}/signatures`
+        )}`
+      )
+    )
+    t.deepEqual(response.body.signed_by, [keypair.publicKey()])
+    t.is(response.body.status, "pending")
 
     const record = await querySignatureRequestByHash(database, sha256(req))
     if (!record) {
@@ -84,7 +93,7 @@ test("can create a request", t =>
     const signatures = await querySignatureRequestSignatures(database, record.id)
 
     t.is(signatures.length, 1)
-    t.is(signatures[0].signature, signature.toString("base64"))
+    t.is(signatures[0].signature, signature)
     t.is(signatures[0].signer_account_id, keypair.publicKey())
   }))
 
@@ -98,8 +107,8 @@ test("cannot submit a request with a tx xdr containing a signature", t =>
       })
     ])
 
-    const signature = keypair.sign(tx.hash())
-    tx.addSignature(keypair.publicKey(), signature.toString("base64"))
+    const signature = tx.getKeypairSignature(keypair)
+    tx.addSignature(keypair.publicKey(), signature)
 
     const req = buildTransactionURI(Networks.TESTNET, tx).toString()
 
@@ -108,7 +117,7 @@ test("cannot submit a request with a tx xdr containing a signature", t =>
       .send({
         pubkey: keypair.publicKey(),
         req,
-        signature: signature.toString("base64")
+        signature
       })
       .expect(400)
 
@@ -134,7 +143,7 @@ test("rejects a request that has already timed out", t =>
       }
     )
 
-    const signature = keypair.sign(tx.hash())
+    const signature = tx.getKeypairSignature(keypair)
     const req = buildTransactionURI(Networks.TESTNET, tx).toString()
 
     await request(server)
@@ -142,7 +151,7 @@ test("rejects a request that has already timed out", t =>
       .send({
         pubkey: keypair.publicKey(),
         req,
-        signature: signature.toString("base64")
+        signature
       })
       .expect(400)
 
@@ -168,7 +177,7 @@ test("rejects a transaction with a too-late upper timebound", t =>
       }
     )
 
-    const signature = keypair.sign(tx.hash())
+    const signature = tx.getKeypairSignature(keypair)
     const req = buildTransactionURI(Networks.TESTNET, tx).toString()
 
     await request(server)
@@ -176,7 +185,7 @@ test("rejects a transaction with a too-late upper timebound", t =>
       .send({
         pubkey: keypair.publicKey(),
         req,
-        signature: signature.toString("base64")
+        signature
       })
       .expect(400)
 

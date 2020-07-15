@@ -19,14 +19,10 @@ export async function serializeSignatureRequestAndSigners(signatureRequest: Sign
     queryAllSignatureRequestSigners(database, signatureRequest.id),
     querySignatureRequestSignatures(database, signatureRequest.id)
   ])
-  const keysWhoSignedAlready = signatures.map(signature => signature.signer_account_id)
   const serializedSigners = await Promise.all(
     signers.map(signer => serializeSigner(signer, signatures))
   )
-  return serializeSignatureRequest(
-    signatureRequest,
-    serializedSigners.filter(signer => keysWhoSignedAlready.includes(signer.account_id))
-  )
+  return serializeSignatureRequest(signatureRequest, serializedSigners, signatures)
 }
 
 interface QueryOptions {

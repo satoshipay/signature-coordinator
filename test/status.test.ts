@@ -66,6 +66,7 @@ test("can retrieve a pending transaction request's status", t =>
       )}`,
       error: null,
       signed_by: [],
+      signers: ["GD73FQ7GIS4NQOO7PJKJWCKYYX5OV27QNAYJVIRHZPXEEF72VR22MLXU"],
       status: "pending",
       created_at: "2019-12-03T12:00:00.000Z",
       updated_at: "2019-12-03T12:10:00.000Z"
@@ -88,6 +89,7 @@ test("can retrieve a completed transaction request's status", t =>
       )}`,
       error: null,
       signed_by: [],
+      signers: ["GD73FQ7GIS4NQOO7PJKJWCKYYX5OV27QNAYJVIRHZPXEEF72VR22MLXU"],
       status: "submitted",
       created_at: "2019-12-03T12:00:00.000Z",
       updated_at: "2019-12-03T12:10:00.000Z"
@@ -109,6 +111,7 @@ test("can retrieve a stale transaction request's status", t =>
         "AAAAAP+yw+ZEuNg533pUmwlYxfrq6/BoMJqiJ8vuQhf6rHWmAAAAZAB8NHAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAA/7LD5kS42DnfelSbCVjF+urr8GgwmqIny+5CF/qsdaYAAAAAAAAAAACYloAAAAAAAAAAAA"
       )}`,
       signed_by: [],
+      signers: ["GD73FQ7GIS4NQOO7PJKJWCKYYX5OV27QNAYJVIRHZPXEEF72VR22MLXU"],
       status: "failed",
       error: {
         message: "Transaction is stale"

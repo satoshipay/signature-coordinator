@@ -74,8 +74,8 @@ test("can collate an additional signature", t =>
       .send({
         xdr: tx.toEnvelope().toXDR("base64")
       })
-    // .expect(204)
-    t.is(response.status, 204, response.body)
+
+    t.is(response.status, 204, response.text || response.body)
 
     // TODO: Check response body
 

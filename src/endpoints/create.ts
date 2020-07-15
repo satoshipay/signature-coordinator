@@ -1,6 +1,6 @@
 import { parseStellarUri, TransactionStellarUri } from "@stellarguard/stellar-uri"
 import { createHash } from "crypto"
-import createError from "http-errors"
+import HttpError from "http-errors"
 import ms from "ms"
 import { Keypair, Networks, Transaction } from "stellar-sdk"
 import UUID from "uuid"
@@ -11,9 +11,9 @@ import { notifyNewSignatureRequest } from "../notifications"
 import { getAllSigners, getAllSources, getHorizon, hasSufficientSignatures } from "../lib/stellar"
 import { saveSigner, Signer } from "../models/signer"
 import { saveSignature } from "../models/signature"
-import { createSignatureRequest } from "../models/signature-request"
+import { createSignatureRequest, serializeSignatureRequest } from "../models/signature-request"
 import { saveSourceAccount } from "../models/source-account"
-import { serializeSignatureRequestAndSigners } from "./query"
+import { serializeSigner } from "./query"
 
 const dedupe = <T>(array: T[]): T[] => Array.from(new Set(array))
 
@@ -21,7 +21,7 @@ function parseTransactionXDR(base64XDR: string, network: Networks) {
   try {
     return new Transaction(base64XDR, network)
   } catch (error) {
-    throw createError(400, "Cannot parse transaction XDR: " + error.message)
+    throw HttpError(400, "Cannot parse transaction XDR: " + error.message)
   }
 }
 
@@ -31,16 +31,21 @@ function hashSignatureRequest(requestURI: string) {
   return hash.digest("hex")
 }
 
-export async function handleSignatureRequestSubmission(
-  requestURI: string,
+export async function handleTransactionCreation(
+  originalRequestURI: string,
   signatureXDR: string,
   signaturePubKey: string
 ) {
-  const uri = parseStellarUri(requestURI) as TransactionStellarUri
+  const hash = hashSignatureRequest(originalRequestURI)
+  const uri = parseStellarUri(originalRequestURI) as TransactionStellarUri
 
   if (uri.operation !== "tx") {
-    throw createError(400, "This endpoint supports the 'tx' operation only.")
+    throw HttpError(400, "This endpoint supports the 'tx' operation only.")
   }
+
+  uri.callback = new URL(`/transactions/${hash}/signatures`, config.baseUrl).toString()
+  uri.originDomain = new URL(config.baseUrl).host
+  uri.addSignature(config.signingKeypair)
 
   const keypair = Keypair.fromPublicKey(signaturePubKey)
   const network = (uri.networkPassphrase || Networks.PUBLIC) as Networks
@@ -52,28 +57,32 @@ export async function handleSignatureRequestSubmission(
   const requiredSigners = getAllSigners(sourceAccounts)
 
   if (tx.signatures.length > 0) {
-    throw createError(400, "You need to submit an unsigned transaction.")
+    throw HttpError(400, "You need to submit an unsigned transaction.")
   }
 
   if (!keypair.verify(tx.hash(), Buffer.from(signatureXDR, "base64"))) {
-    throw createError(400, "Provided invalid signature.")
+    throw HttpError(
+      400,
+      `The provided signature is not a valid signature of ${signaturePubKey}. ` +
+        `Transaction hash: ${tx.hash().toString("base64")}`
+    )
   }
 
   if (!requiredSigners.includes(signaturePubKey)) {
-    throw createError(
+    throw HttpError(
       400,
       "Transaction signature is created by an unrecognized key. Only sign with keys that are signers."
     )
   }
 
   if (sourceAccounts.every(account => hasSufficientSignatures(account, tx.signatures))) {
-    throw createError(400, "Transaction is already sufficiently signed.")
+    throw HttpError(400, "Transaction is already sufficiently signed.")
   }
 
   if (!tx.timeBounds || !tx.timeBounds.maxTime) {
-    throw createError(400, `Transaction must have upper timebound set.`)
+    throw HttpError(400, `Transaction must have upper timebound set.`)
   } else if (Number.parseInt(tx.timeBounds.maxTime, 10) * 1000 > Date.now() + ms(config.txMaxTtl)) {
-    throw createError(
+    throw HttpError(
       400,
       `Transaction times out too late. Only accepting transactions valid for max. ${config.txMaxTtl}.`
     )
@@ -82,8 +91,9 @@ export async function handleSignatureRequestSubmission(
   const { serialized, signers } = await transaction(async client => {
     const signatureRequest = await createSignatureRequest(client, {
       id: UUID.v4(),
-      hash: hashSignatureRequest(requestURI),
-      req: requestURI,
+      hash,
+      req: uri.toString(),
+      source_req: originalRequestURI,
       status: "pending",
       expires_at: new Date(Number.parseInt(tx.timeBounds!.maxTime, 10) * 1000)
     })
@@ -112,14 +122,17 @@ export async function handleSignatureRequestSubmission(
       }
     }
 
-    await saveSignature(client, {
+    const signature = await saveSignature(client, {
       signature_request: signatureRequest.id,
       signer_account_id: signaturePubKey,
       signature: signatureXDR
     })
 
+    const signatures = [signature]
+    const serializedSigners = createdSigners.map(signer => serializeSigner(signer, signatures))
+
     return {
-      serialized: await serializeSignatureRequestAndSigners(signatureRequest),
+      serialized: serializeSignatureRequest(signatureRequest, serializedSigners, signatures),
       signers: createdSigners
     }
   })

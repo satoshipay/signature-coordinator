@@ -17,11 +17,11 @@ import { serializeSignatureRequestAndSigners } from "./query"
 
 const dedupe = <T>(array: T[]): T[] => Array.from(new Set(array))
 
-export async function collateSignatures(signatureRequestHash: string, signatureXDR: string) {
+export async function collateSignatures(signatureRequestHash: string, signedTxXDR: string) {
   const signatureRequest = await querySignatureRequestByHash(database, signatureRequestHash)
 
   if (!signatureRequest) {
-    throw HttpError(404, `Signature request not found: ${signatureRequestHash}`)
+    throw HttpError(404, `Transaction not found: ${signatureRequestHash}`)
   }
   if (signatureRequest.status === "ready") {
     throw HttpError(400, `Transaction is already sufficiently signed.`)
@@ -35,7 +35,7 @@ export async function collateSignatures(signatureRequestHash: string, signatureX
   const uri = parseStellarUri(signatureRequest.req) as TransactionStellarUri
 
   const network = (uri.networkPassphrase || Networks.PUBLIC) as Networks
-  const tx = new Transaction(uri.xdr, network)
+  const tx = new Transaction(signedTxXDR, network)
 
   if (tx.signatures.length !== 1) {
     throw Error(`Expected exactly one signature on the transaction. Got ${tx.signatures.length}.`)
@@ -60,24 +60,21 @@ export async function collateSignatures(signatureRequestHash: string, signatureX
   await saveSignature(database, {
     signature_request: signatureRequest.id,
     signer_account_id: signerPubKey,
-    signature: signatureXDR
+    signature: signature.signature().toString("base64")
   })
 
   const allSignatures = await querySignatureRequestSignatures(database, signatureRequest.id)
   const sourceAccounts = await queryAllSignatureRequestSourceAccounts(database, signatureRequest.id)
 
   if (hasSufficientSignatures(signatureRequest, sourceAccounts, allSignatures)) {
-    // const submissionResponse = await submitToHorizon(horizon, collatedTx)
-    // await updateSignatureRequestStatus(database, signatureRequest.id, "submitted")
-
-    // await notifySignatureRequestSubmitted({
-    //   signatureRequest,
-    //   signers
-    // })
-
     await updateSignatureRequestStatus(database, signatureRequest.id, "ready")
+
+    // Mutate our local object, too, or the data in the response will be stale
+    signatureRequest.status = "ready"
   }
 
   const serialized = await serializeSignatureRequestAndSigners(signatureRequest)
   await notifySignatureRequestUpdate(serialized, signerAccountIDs)
+
+  return serialized
 }
