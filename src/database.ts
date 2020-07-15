@@ -1,23 +1,22 @@
+import * as path from "path"
 import { Pool, PoolClient, types as pgTypes } from "pg"
 import createPostgresSubscriber from "pg-listen"
+import * as Migrations from "postgres-migrations"
 import config from "./config"
 import { querySignatureRequestByHash } from "./models/signature-request"
 
 export type DBClient = Pool | PoolClient
 
-export const database = new Pool({
+const connectionConfig = {
   database: config.pgdatabase,
   host: config.pghost,
   password: config.pgpassword,
+  port: 5432,
   user: config.pguser
-})
+}
 
-export const notificationsSubscription = createPostgresSubscriber({
-  database: config.pgdatabase,
-  host: config.pghost,
-  password: config.pgpassword,
-  user: config.pguser
-})
+export const database = new Pool(connectionConfig)
+export const notificationsSubscription = createPostgresSubscriber(connectionConfig)
 
 notificationsSubscription.events.on("error", (error: Error) => {
   console.error("Fatal postgres notification subscription error:", error)
@@ -48,6 +47,10 @@ export async function connectToDatabase() {
       `Cannot connect to database ${config.pgdatabase}@${config.pghost}: ${error.message}`
     )
   }
+}
+
+export function migrateDatabase() {
+  return Migrations.migrate(connectionConfig, path.join(__dirname, "../migrations"))
 }
 
 /**
