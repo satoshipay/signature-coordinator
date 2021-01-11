@@ -48,7 +48,7 @@
   },
   "dependencies": {
     "@godaddy/terminus": "^2.4.1",
-    "axios": "^0.19.0",
+    "axios": "^0.21.1",
     "envfefe": "^1.2.0",
     "http-errors": "^1.7.1",
     "http-event-stream": "^0.2.0",
@@ -59,7 +59,7 @@
     "pg": "^7.4.3",
     "pg-listen": "^1.5.0",
     "qs": "^6.5.2",
-    "stellar-sdk": "^3.3.0",
+    "stellar-sdk": "^7.0.0",
     "typed-emitter": "^0.1.0",
     "uuid": "^3.3.2"
   },
