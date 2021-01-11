@@ -19,7 +19,7 @@ export async function createTransaction(
   operations: xdr.Operation<any>[]
 ) {
   const account = await horizon.loadAccount(accountKeypair.publicKey())
-  const txBuilder = new TransactionBuilder(account, { fee: 100, networkPassphrase: network })
+  const txBuilder = new TransactionBuilder(account, { fee: "100", networkPassphrase: network })
 
   for (const operation of operations) {
     txBuilder.addOperation(operation)
