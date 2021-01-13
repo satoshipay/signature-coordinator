@@ -112,6 +112,8 @@ production:
   script:
     - helm_init
     - deploy
+  services:
+    - docker:${DOCKER_VERSION}-dind
   when: manual
   only:
     kubernetes: active
