@@ -65,12 +65,9 @@ build:
 
 publish:
   stage: publish
-  image: docker:stable
-  variables:
-    DOCKER_HOST: tcp://localhost:2375
-    DOCKER_DRIVER: overlay2
+  image: docker:${DOCKER_VERSION}
   services:
-    - docker:dind
+    - docker:${DOCKER_VERSION}-dind
   script:
     - export branch_or_tag=${CI_COMMIT_TAG:-$CI_COMMIT_REF_SLUG}
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
@@ -112,8 +109,6 @@ production:
   script:
     - helm_init
     - deploy
-  services:
-    - docker:${DOCKER_VERSION}-dind
   when: manual
   only:
     kubernetes: active
