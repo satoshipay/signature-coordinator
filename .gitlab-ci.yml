@@ -72,9 +72,8 @@ publish:
     - export branch_or_tag=${CI_COMMIT_TAG:-$CI_COMMIT_REF_SLUG}
     - |
       /kaniko/executor --context ${CI_PROJECT_DIR} --dockerfile ${CI_PROJECT_DIR}/docker/Dockerfile \
-        --destination ${CI_APPLICATION_REPOSITORY}:${CI_APPLICATION_TAG} \
-        --destination ${CI_APPLICATION_REPOSITORY}:latest \
-        --destination ${DOCKER_HUB_IMAGE}:$branch_or_tag
+        --destination ${CI_APPLICATION_REPOSITORY} \
+        --destination ${CI_REGISTRY_IMAGE}:latest
 
 staging:
   stage: staging
