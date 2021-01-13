@@ -69,10 +69,22 @@ publish:
     name: gcr.io/kaniko-project/executor:debug-v0.13.0
     entrypoint: [""]
   script:
+    - export branch_or_tag=${CI_COMMIT_TAG:-$CI_COMMIT_REF_SLUG}
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+    - docker pull $CI_REGISTRY_IMAGE:latest || true
     - |
-      /kaniko/executor --context ${CI_PROJECT_DIR} --dockerfile ${CI_PROJECT_DIR}/Dockerfile \
+      /kaniko/executor --context ${CI_PROJECT_DIR} --dockerfile ${CI_PROJECT_DIR}/docker/Dockerfile \
         --destination ${CI_APPLICATION_REPOSITORY}:${CI_APPLICATION_TAG} \
-        --destination ${CI_APPLICATION_REPOSITORY}:latest
+        --destination ${CI_APPLICATION_REPOSITORY}:latest \
+        --destination ${DOCKER_HUB_IMAGE}:$branch_or_tag
+    - docker push $CI_APPLICATION_REPOSITORY
+    - docker push $CI_REGISTRY_IMAGE:latest
+    - |
+      if [[ -n "$DOCKER_HUB_USER" -a -n "$DOCKER_HUB_PASSWORD" ]]
+      then
+        docker login -u "$DOCKER_HUB_USER" -p "$DOCKER_HUB_PASSWORD"
+        docker push $DOCKER_HUB_IMAGE
+      fi
 
 staging:
   stage: staging
