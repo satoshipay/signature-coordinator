@@ -85,7 +85,7 @@ staging:
     name: staging
     url: https://signature-coordinator.staging.satoshipay.tech
   script:
-    - helm_init
+    - create_namespace
     - deploy
   only:
     kubernetes: active
@@ -104,7 +104,7 @@ production:
     name: production
     url: https://multisig.satoshipay.io
   script:
-    - helm_init
+    - create_namespace
     - deploy
   when: manual
   only:
@@ -114,10 +114,9 @@ production:
 
 before_script:
   - |
-    function helm_init () {
-      helm init --client-only --skip-refresh
-      helm dependency update chart/
-      helm dependency build chart/
+    function create_namespace () {
+      kubectl get namespace "$KUBE_NAMESPACE" || \
+        kubectl create namespace "$KUBE_NAMESPACE"
     }
 
     function deploy () {
