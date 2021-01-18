@@ -77,7 +77,9 @@ publish:
 
 staging:
   stage: staging
-  image: registry.satoshipay.tech/infrastructure/docker/helmfile:latest
+  image:
+    name: ${CONTAINER_REGISTRY_PREFIX}/helmfile:3
+    entrypoint: [""]
   dependencies: []
   environment:
     name: staging
@@ -92,7 +94,9 @@ staging:
 
 production:
   stage: production
-  image: registry.satoshipay.tech/infrastructure/docker/helmfile:latest
+  image:
+    name: ${CONTAINER_REGISTRY_PREFIX}/helmfile:3
+    entrypoint: [""]
   dependencies: []
   variables:
     INGRESS_CLASS: core
