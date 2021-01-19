@@ -16,6 +16,7 @@ function getConfig() {
       sanitize: sanitize.string
     },
     database: {
+      optional: true,
       sanitize: sanitize.string
     },
     horizon: {
