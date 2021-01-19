@@ -1,6 +1,8 @@
 ARG BUILDER=node:10-alpine
 ARG RUNNER=node:10-alpine
 
+FROM binxio/gcp-get-secret AS get-secret
+
 ## Builder
 FROM $BUILDER as builder
 WORKDIR /app
@@ -34,10 +36,14 @@ WORKDIR /app
 ENV NODE_ENV production
 ENV PORT 3000
 
+# Install gcp-get-secret
+COPY --from=get-secret /gcp-get-secret /usr/local/bin/
+
 COPY --from=builder /app/package.json /app/package-lock.json /app/.version /app/
 COPY --from=builder /app/build /app/build
 COPY --from=builder /app/node_modules /app/node_modules
 
 EXPOSE 3000
 
+ENTRYPOINT "/usr/local/bin/gcp-get-secret"
 CMD "node" "./build/index.js"
