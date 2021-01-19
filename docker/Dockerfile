@@ -45,5 +45,5 @@ COPY --from=builder /app/node_modules /app/node_modules
 
 EXPOSE 3000
 
-ENTRYPOINT "/usr/local/bin/gcp-get-secret"
-CMD "node" "./build/index.js"
+ENTRYPOINT [ "/usr/local/bin/gcp-get-secret" ]
+CMD [ "node", "./build/index.js" ]
