@@ -38,9 +38,14 @@ export async function connectToDatabase() {
     ])
     console.log("Database connection ok.")
   } catch (error) {
-    const url = new URL(config.database)
-    url.password = "*".repeat(url.password.length)
-    throw new Error(`Cannot connect to database ${url.toString()}: ${error.message}`)
+    let connection = `${process.env.PGUSER}@${process.env.PGHOST}`
+
+    if (config.database) {
+      const url = new URL(config.database)
+      url.password = "*".repeat(url.password.length)
+      connection = url.toString()
+    }
+    throw new Error(`Cannot connect to database ${connection}: ${error.message}`)
   }
 }
 
