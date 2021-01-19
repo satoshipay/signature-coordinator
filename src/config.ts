@@ -30,7 +30,10 @@ function getConfig() {
     }
   })
 
-  if (process.env.DATABASE_PASSWORD) {
+  if (!parsedConfig.database && !process.env.PGHOST) {
+    throw Error("Neither DATABASE nor PG* environment vars have been set.")
+  }
+  if (parsedConfig.database && process.env.DATABASE_PASSWORD) {
     parsedConfig.database = setPasswordInURL(parsedConfig.database, process.env.DATABASE_PASSWORD)
   }
 
