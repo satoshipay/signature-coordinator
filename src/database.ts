@@ -41,7 +41,9 @@ export async function connectToDatabase() {
     let connection = `${process.env.PGUSER}@${process.env.PGHOST}`
 
     if (config.database) {
-      const url = new URL(config.database)
+      const url = new URL(
+        config.database || `postgres://${process.env.PGUSER}@${process.env.PGHOST}`
+      )
       url.password = "*".repeat(url.password.length)
       connection = url.toString()
     }
