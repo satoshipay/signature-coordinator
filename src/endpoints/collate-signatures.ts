@@ -30,7 +30,7 @@ async function submitToHorizon(horizon: Server, tx: Transaction) {
 
     throw createError(400, "Transaction submission to horizon failed.", {
       data: {
-        response: error.response.data,
+        response: error.response?.data,
         base64XDR
       }
     })
