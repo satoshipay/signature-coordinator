@@ -90,7 +90,11 @@ test("can submit a co-sig request and collate a 2nd signature", async t =>
           .toString("base64")
       })
       .expect((response: Response) => {
-        t.is(response.status, 200, response.body.message || response.text)
+        t.is(
+          response.status,
+          200,
+          response.body.message || response.text || JSON.stringify(response.body, null, 2)
+        )
       })
 
     const someOtherAccount = await horizon.loadAccount(someOtherKeypair.publicKey())
