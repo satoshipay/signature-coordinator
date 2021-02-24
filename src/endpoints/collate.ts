@@ -35,10 +35,19 @@ export async function collateSignatures(signatureRequestHash: string, signedTxXD
   const uri = parseStellarUri(signatureRequest.req) as TransactionStellarUri
 
   const network = (uri.networkPassphrase || Networks.PUBLIC) as Networks
-  const tx = new Transaction(signedTxXDR, network)
+
+  let tx = null
+  try {
+    tx = new Transaction(signedTxXDR, network)
+  } catch (error) {
+    throw HttpError(400, "Transaction could not be parsed.")
+  }
 
   if (tx.signatures.length !== 1) {
-    throw Error(`Expected exactly one signature on the transaction. Got ${tx.signatures.length}.`)
+    throw HttpError(
+      400,
+      `Expected exactly one signature on the transaction. Got ${tx.signatures.length}.`
+    )
   }
 
   const signature = tx.signatures[0]
