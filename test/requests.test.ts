@@ -3,13 +3,16 @@ import { Asset, Keypair, Networks, Operation, Transaction } from "stellar-sdk"
 import request from "supertest"
 import { withApp } from "./_helpers/bootstrap"
 import { seedSignatureRequests, Pool } from "./_helpers/seed"
-import { prepareTestnetAccount, buildTransaction } from "./_helpers/transactions"
+import {
+  prepareTestnetAccount,
+  buildTransaction,
+  buildTransactionURI
+} from "./_helpers/transactions"
 
 const keypair1 = Keypair.random()
 const keypair2 = Keypair.random()
 
 let tx: Transaction
-let txXdr: string
 
 test.before(async () => {
   await prepareTestnetAccount(keypair1, 2, [keypair2.publicKey()])
@@ -25,10 +28,8 @@ async function seed(database: Pool) {
   ])
 
   tx.sign(keypair1)
-  txXdr = tx
-    .toEnvelope()
-    .toXDR()
-    .toString("base64")
+
+  const req = buildTransactionURI(Networks.TESTNET, tx).toString()
 
   await seedSignatureRequests(database, [
     {
@@ -37,7 +38,7 @@ async function seed(database: Pool) {
         hash: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110757",
         created_at: new Date("2019-12-03T12:00:00.000Z"),
         updated_at: new Date("2019-12-03T12:10:00.000Z"),
-        req: `web+stellar:tx?xdr=${encodeURIComponent(txXdr)}`,
+        req,
         status: "pending"
       } as const,
       signatures: []
@@ -48,7 +49,7 @@ async function seed(database: Pool) {
         hash: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110758",
         created_at: new Date("2019-12-03T12:05:00.000Z"),
         updated_at: new Date("2019-12-03T12:05:00.000Z"),
-        req: `web+stellar:tx?xdr=${encodeURIComponent(txXdr)}`,
+        req,
         status: "submitted"
       } as const,
       signatures: [
@@ -64,7 +65,7 @@ async function seed(database: Pool) {
         hash: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110759",
         created_at: new Date("2019-12-03T11:00:00.000Z"),
         updated_at: new Date("2019-12-03T11:00:00.000Z"),
-        req: `web+stellar:tx?xdr=${encodeURIComponent(txXdr)}`,
+        req,
         status: "submitted"
       } as const,
       signatures: [
@@ -89,11 +90,13 @@ test("can fetch latest requests", t =>
       .get(`/accounts/${keypair1.publicKey()}/transactions`)
       .expect(200)
 
+    const req = buildTransactionURI(Networks.TESTNET, tx).toString()
+
     t.deepEqual(response.body, [
       {
         cursor: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110759",
         hash: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110759",
-        req: `web+stellar:tx?xdr=${encodeURIComponent(txXdr)}`,
+        req,
         error: null,
         status: "submitted",
         created_at: "2019-12-03T11:00:00.000Z",
@@ -104,7 +107,7 @@ test("can fetch latest requests", t =>
       {
         cursor: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110757",
         hash: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110757",
-        req: `web+stellar:tx?xdr=${encodeURIComponent(txXdr)}`,
+        req,
         error: null,
         status: "pending",
         created_at: "2019-12-03T12:00:00.000Z",
@@ -115,7 +118,7 @@ test("can fetch latest requests", t =>
       {
         cursor: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110758",
         hash: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110758",
-        req: `web+stellar:tx?xdr=${encodeURIComponent(txXdr)}`,
+        req,
         error: null,
         status: "submitted",
         created_at: "2019-12-03T12:05:00.000Z",
@@ -141,11 +144,13 @@ test("can fetch requests with cursor parameter", t =>
       .query({ cursor: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110759" })
       .expect(200)
 
+    const req = buildTransactionURI(Networks.TESTNET, tx).toString()
+
     t.deepEqual(response.body, [
       {
         cursor: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110757",
         hash: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110757",
-        req: `web+stellar:tx?xdr=${encodeURIComponent(txXdr)}`,
+        req,
         error: null,
         status: "pending",
         created_at: "2019-12-03T12:00:00.000Z",
@@ -156,7 +161,7 @@ test("can fetch requests with cursor parameter", t =>
       {
         cursor: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110758",
         hash: "4038bd405b797086a37fa72c9fef6703cdc87c0da4ff82061b7775938a110758",
-        req: `web+stellar:tx?xdr=${encodeURIComponent(txXdr)}`,
+        req,
         error: null,
         status: "submitted",
         created_at: "2019-12-03T12:05:00.000Z",
