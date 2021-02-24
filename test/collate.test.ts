@@ -75,7 +75,7 @@ test("can collate an additional signature", t =>
         xdr: tx.toEnvelope().toXDR("base64")
       })
 
-    t.is(response.status, 204, response.text || response.body)
+    t.is(response.status, 200, response.text || response.body)
 
     // TODO: Check response body
 
@@ -137,7 +137,7 @@ test("changes status to 'ready' when sufficiently signed", t =>
       .send({
         xdr: tx.toEnvelope().toXDR("base64")
       })
-      .expect(204)
+      .expect(200)
 
     const signatureRequest = await querySignatureRequestByHash(database, sha256(req))
     t.is(signatureRequest?.status, "ready")
@@ -158,7 +158,8 @@ test("rejects an invalid signature", t =>
       .sign(Buffer.concat([tx.hash(), Buffer.alloc(4)]))
       .toString("base64")
 
-    tx.addSignature(keypair.publicKey(), badSignature)
+    // tx now throws when trying to add invalid signature
+    t.throws(() => tx.addSignature(keypair.publicKey(), badSignature))
 
     await seedSignatureRequests(database, [
       {
