@@ -61,7 +61,7 @@
     "ms": "^2.1.2",
     "pg": "^8.5.1",
     "pg-listen": "^1.7.0",
-    "postgres-migrations": "^4.0.3",
+    "postgres-migrations": "^5.1.1",
     "squid": "^0.5.1",
     "stellar-sdk": "^8.0.0",
     "typed-emitter": "^0.1.0",
