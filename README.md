@@ -12,6 +12,9 @@ Copy test.env to .env and modify as needed.
 
 ```sh
 npm run dev:db &
-npm run dev:db:seed
+npm run dev:db:seed (or) npm run build && npm run migrate
 npm test
 ```
+
+***Note:***
+The account associtated to the env variable `TESTING_PUBNET_SECRET_KEY` should have a spendable balance of at least 5 XLM, otherwise the test for pubnet submission fails.
