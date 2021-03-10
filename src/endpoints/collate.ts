@@ -75,7 +75,7 @@ export async function collateSignatures(signatureRequestHash: string, signedTxXD
   const allSignatures = await querySignatureRequestSignatures(database, signatureRequest.id)
   const sourceAccounts = await queryAllSignatureRequestSourceAccounts(database, signatureRequest.id)
 
-  if (hasSufficientSignatures(signatureRequest, sourceAccounts, allSignatures)) {
+  if (await hasSufficientSignatures(signatureRequest, sourceAccounts, allSignatures)) {
     await updateSignatureRequestStatus(database, signatureRequest.id, "ready")
 
     // Mutate our local object, too, or the data in the response will be stale
