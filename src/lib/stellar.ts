@@ -63,7 +63,8 @@ export function hasSufficientSignatures(
     )
     .map(signer => signer.weight)
 
-  return sum(effectiveSignatureWeights) >= threshold
+  const weightSum = sum(effectiveSignatureWeights)
+  return weightSum >= threshold && weightSum !== 0
 }
 
 function containsSignature(haystack: xdr.DecoratedSignature[], needle: xdr.DecoratedSignature) {

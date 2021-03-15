@@ -46,7 +46,11 @@ export async function submitTransaction(signatureRequestHash: string) {
   const transaction = new Transaction(uri.xdr, uri.networkPassphrase || Networks.PUBLIC)
 
   for (const signature of signatures) {
-    transaction.addSignature(signature.signer_account_id, signature.signature)
+    const signer = signers.find(s => s.account_id === signature.signer_account_id)
+    // only add signature if key_weight is greater 0
+    if (signer && signer.key_weight > 0) {
+      transaction.addSignature(signature.signer_account_id, signature.signature)
+    }
   }
 
   if (uri.callback) {

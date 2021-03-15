@@ -68,7 +68,9 @@ export async function handleTransactionCreation(
     )
   }
 
-  if (!requiredSigners.includes(signaturePubKey)) {
+  // Also handle edge case where signature request was created from source account with master weight 0
+  // --> the signaturePubKey is not a requiredSigner but a recognized key
+  if (!requiredSigners.includes(signaturePubKey) && signaturePubKey !== tx.source) {
     throw HttpError(
       400,
       "Transaction signature is created by an unrecognized key. Only sign with keys that are signers."
