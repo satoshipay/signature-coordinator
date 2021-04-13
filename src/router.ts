@@ -109,6 +109,7 @@ if (config.serveStellarToml) {
   router.get("/.well-known/stellar.toml", async ({ response }) => {
     response.body = `
       MULTISIG_ENDPOINT=${JSON.stringify(config.baseUrl)}
+      SIGNING_KEY=${JSON.stringify(config.signingKeypair.publicKey())}
     `
       .split("\n")
       .map(line => line.trim())
