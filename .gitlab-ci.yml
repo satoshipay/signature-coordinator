@@ -73,4 +73,4 @@ publish:
     - |
       /kaniko/executor --context ${CI_PROJECT_DIR} --dockerfile ${CI_PROJECT_DIR}/docker/Dockerfile \
         --destination ${CI_APPLICATION_REPOSITORY}:${CI_APPLICATION_TAG} \
-        --destination ${CI_APPLICATION_REPOSITORY}:latest
+        --destination ${CI_APPLICATION_REPOSITORY}:v1

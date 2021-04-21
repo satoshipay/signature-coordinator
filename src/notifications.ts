@@ -1,18 +1,16 @@
 import TypedEmitter from "typed-emitter"
 
-import { SignatureRequest } from "./models/signature-request"
-import { Signer } from "./models/signer"
 import { notificationsSubscription } from "./database"
+import { SerializedSignatureRequest } from "./models/signature-request"
 
-interface SignatureRequestWithSigners {
-  signatureRequest: SignatureRequest
-  signers: Signer[]
+export interface NotificationPayload {
+  signatureRequest: SerializedSignatureRequest
+  signers: string[]
 }
 
 interface NotificationEvents {
-  "signature-request:new": (payload: SignatureRequestWithSigners) => void
-  "signature-request:updated": (payload: SignatureRequestWithSigners) => void
-  "signature-request:submitted": (payload: SignatureRequestWithSigners) => void
+  "transaction:added": (notification: NotificationPayload) => void
+  "transaction:updated": (notification: NotificationPayload) => void
 }
 
 export const notifications = (notificationsSubscription.notifications as any) as TypedEmitter<
@@ -20,19 +18,26 @@ export const notifications = (notificationsSubscription.notifications as any) as
 >
 
 export function subscribeToChannels() {
-  notificationsSubscription.listenTo("signature-request:new")
-  notificationsSubscription.listenTo("signature-request:updated")
-  notificationsSubscription.listenTo("signature-request:submitted")
+  notificationsSubscription.listenTo("transaction:added")
+  notificationsSubscription.listenTo("transaction:updated")
 }
 
-export async function notifyNewSignatureRequest(payload: SignatureRequestWithSigners) {
-  return notificationsSubscription.notify("signature-request:new", payload)
+export async function notifyNewSignatureRequest(
+  signatureRequest: SerializedSignatureRequest,
+  signers: string[]
+) {
+  return notificationsSubscription.notify("transaction:added", {
+    signatureRequest,
+    signers
+  })
 }
 
-export async function notifySignatureRequestUpdated(payload: SignatureRequestWithSigners) {
-  return notificationsSubscription.notify("signature-request:updated", payload)
-}
-
-export async function notifySignatureRequestSubmitted(payload: SignatureRequestWithSigners) {
-  return notificationsSubscription.notify("signature-request:submitted", payload)
+export async function notifySignatureRequestUpdate(
+  signatureRequest: SerializedSignatureRequest,
+  signers: string[]
+) {
+  return notificationsSubscription.notify("transaction:updated", {
+    signatureRequest,
+    signers
+  })
 }

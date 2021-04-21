@@ -1,22 +1,23 @@
 import { parse, sanitize } from "envfefe"
-import { Server } from "stellar-sdk"
-import { URL } from "url"
+import { Keypair, Server } from "stellar-sdk"
 
 export type Config = ReturnType<typeof getConfig>
-
-function setPasswordInURL(urlString: string, password: string) {
-  const parsedDatabaseURL = new URL(urlString)
-  parsedDatabaseURL.password = password
-  return parsedDatabaseURL.toString()
-}
 
 function getConfig() {
   const parsedConfig = parse({
     baseUrl: {
       sanitize: sanitize.string
     },
-    database: {
-      optional: true,
+    pgdatabase: {
+      sanitize: sanitize.string
+    },
+    pghost: {
+      sanitize: sanitize.string
+    },
+    pgpassword: {
+      sanitize: sanitize.string
+    },
+    pguser: {
       sanitize: sanitize.string
     },
     horizon: {
@@ -28,17 +29,23 @@ function getConfig() {
     port: {
       default: 3000,
       sanitize: sanitize.number
+    },
+    serveStellarToml: {
+      sanitize: sanitize.boolean
+    },
+    signingSecretKey: {
+      sanitize: sanitize.string
+    },
+    txMaxTtl: {
+      default: "30d",
+      sanitize: sanitize.string
     }
   })
 
-  if (!parsedConfig.database && !process.env.PGHOST) {
-    throw Error("Neither DATABASE nor PG* environment vars have been set.")
+  return {
+    ...parsedConfig,
+    signingKeypair: Keypair.fromSecret(parsedConfig.signingSecretKey)
   }
-  if (parsedConfig.database && process.env.DATABASE_PASSWORD) {
-    parsedConfig.database = setPasswordInURL(parsedConfig.database, process.env.DATABASE_PASSWORD)
-  }
-
-  return parsedConfig
 }
 
 const config = getConfig()
@@ -46,6 +53,6 @@ const config = getConfig()
 export default config
 
 export const horizonServers = {
-  mainnet: new Server(config.horizon),
+  pubnet: new Server(config.horizon),
   testnet: new Server(config.horizonTestnet)
 }

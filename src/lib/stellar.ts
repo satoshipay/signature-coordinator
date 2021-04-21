@@ -2,14 +2,6 @@ import { AccountResponse, Horizon, Keypair, Networks, Server, Transaction, xdr }
 
 import { horizonServers } from "../config"
 
-interface DecoratedSignature extends xdr.DecoratedSignature {
-  signature(): Buffer
-}
-
-interface SignatureWithHint extends xdr.DecoratedSignature {
-  hint(): Buffer
-}
-
 const dedupe = <T>(array: T[]) => [...new Set(array)]
 const sum = (array: number[]) => array.reduce((total, element) => total + element, 0)
 
@@ -18,7 +10,7 @@ const getSignerKey = (signer: Horizon.AccountSigner): string => signer.key
 export function getHorizon(networkPassphrase: Networks): Server {
   switch (networkPassphrase) {
     case Networks.PUBLIC:
-      return horizonServers.mainnet
+      return horizonServers.pubnet
     case Networks.TESTNET:
       return horizonServers.testnet
     default:
@@ -52,7 +44,7 @@ export function signatureMatchesPublicKey(
   signature: xdr.DecoratedSignature,
   publicKey: string
 ): boolean {
-  const hint = (signature as SignatureWithHint).hint()
+  const hint = signature.hint()
   const keypair = Keypair.fromPublicKey(publicKey)
 
   return hint.equals(keypair.signatureHint() as Buffer)
@@ -71,24 +63,8 @@ export function hasSufficientSignatures(
     )
     .map(signer => signer.weight)
 
-  return sum(effectiveSignatureWeights) >= threshold
-}
-
-export function verifySignatures(tx: Transaction, signerAccountIDs: string[]) {
-  for (const signature of tx.signatures as DecoratedSignature[]) {
-    const signerPublicKey = signerAccountIDs.find(accountID =>
-      signatureMatchesPublicKey(signature, accountID)
-    )
-    if (!signerPublicKey) {
-      throw new Error(
-        `Transaction signature verification failed. Found a signature from an unexpected signer.`
-      )
-    }
-    const signerKeypair = Keypair.fromPublicKey(signerPublicKey)
-    if (!signerKeypair.verify(tx.hash(), signature.signature())) {
-      throw new Error(`Invalid signature: ${signature.toXDR().toString("base64")}`)
-    }
-  }
+  const weightSum = sum(effectiveSignatureWeights)
+  return weightSum >= threshold && weightSum !== 0
 }
 
 function containsSignature(haystack: xdr.DecoratedSignature[], needle: xdr.DecoratedSignature) {

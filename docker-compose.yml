@@ -1,0 +1,18 @@
+version: '3.2'
+services:
+  postgres:
+    image: postgres:12-alpine
+    environment:
+      POSTGRES_PASSWORD: $PGPASSWORD
+    ports:
+      - 5432:5432
+  db_seeder:
+    image: andywer/plow:1.1.0
+    depends_on:
+      - postgres
+    env_file: ./.env
+    environment:
+      PGHOST: postgres
+    restart: "no"
+    volumes:
+      - ./migrations:/migrations

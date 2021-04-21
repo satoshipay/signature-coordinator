@@ -8,6 +8,7 @@
     "max-classes-per-file": false,
     "no-console": false,
     "no-implicit-dependencies": [true, "dev"],
+    "no-submodule-imports": false,
     "object-literal-sort-keys": false,
     "only-arrow-functions": false,
     "ordered-imports": false,

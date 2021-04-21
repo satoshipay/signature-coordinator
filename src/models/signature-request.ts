@@ -1,23 +1,26 @@
+import { spreadInsert, sql } from "squid/pg"
 import { DBClient } from "../database"
-import { SerializedSigner } from "./signer"
+import { Signature } from "./signature"
 
-type Omit<T, K extends keyof any> = Pick<T, Exclude<keyof T, K>>
+export interface SignatureRequestError {
+  message: string
+  details?: any
+}
 
 export interface SignatureRequest {
   id: string
+  error?: SignatureRequestError
   hash: string
-  created_at: string
-  updated_at: string
-  completed_at: string | null
-  designated_coordinator: boolean
-  request_uri: string
-  source_account_id: string
+  req: string
+  source_req: string
+  status: "pending" | "ready" | "submitted" | "failed"
+  created_at: Date
+  updated_at: Date
+  expires_at: Date
 }
 
-export type NewSignatureRequest = Omit<
-  SignatureRequest,
-  "created_at" | "updated_at" | "completed_at"
->
+export type NewSignatureRequest = Omit<SignatureRequest, "created_at" | "updated_at"> &
+  Partial<Pick<SignatureRequest, "created_at" | "updated_at">>
 
 export type SerializedSignatureRequest = ReturnType<typeof serializeSignatureRequest>
 
@@ -26,19 +29,32 @@ interface QueryOptions {
   limit?: number
 }
 
+interface SerializedSigner {
+  account_id: string
+  has_signed: boolean
+}
+
 export function serializeSignatureRequest(
   signatureRequest: SignatureRequest,
-  signers: SerializedSigner[]
+  signers: SerializedSigner[],
+  signatures: Signature[]
 ) {
+  const isStale = signatureRequest.expires_at && signatureRequest.expires_at.getTime() < Date.now()
+  const keysWhoSignedAlready = signatures.map(signature => signature.signer_account_id)
+
+  // the .sort() is only to make tests deterministic
+  const signerAccountIDs = signers.map(signer => signer.account_id).sort()
+
   return {
+    created_at: signatureRequest.created_at.toISOString(),
+    cursor: signatureRequest.hash,
+    error: isStale ? { message: "Transaction is stale" } : signatureRequest.error,
     hash: signatureRequest.hash,
-    request_uri: signatureRequest.request_uri,
-    created_at: signatureRequest.created_at,
-    updated_at: signatureRequest.updated_at,
-    completed_at: signatureRequest.completed_at,
-    _embedded: {
-      signers
-    }
+    req: signatureRequest.req,
+    status: isStale ? "failed" : signatureRequest.status,
+    signed_by: signerAccountIDs.filter(signer => keysWhoSignedAlready.includes(signer)),
+    signers: signerAccountIDs,
+    updated_at: signatureRequest.updated_at?.toISOString()
   }
 }
 
@@ -46,76 +62,70 @@ export async function createSignatureRequest(
   client: DBClient,
   signatureRequest: NewSignatureRequest
 ) {
-  await client.query(
-    `
-    INSERT INTO signature_requests
-      (id, hash, designated_coordinator, request_uri, source_account_id)
-    SELECT $1::uuid, $2::text, $3, $4, $5
-    WHERE NOT EXISTS (
-      SELECT id FROM signature_requests WHERE hash = $2
-    )
-  `,
-    [
-      signatureRequest.id,
-      signatureRequest.hash.toLowerCase(),
-      signatureRequest.designated_coordinator,
-      signatureRequest.request_uri,
-      signatureRequest.source_account_id
-    ]
-  )
-
-  const { rows } = await client.query("SELECT * FROM signature_requests WHERE hash = $1", [
-    signatureRequest.hash
-  ])
-
-  if (rows.length === 0) {
-    throw new Error(
-      `Invariant violation: Could not query just-created signature request with hash ${signatureRequest.hash.toLowerCase()}`
+  if (!signatureRequest.expires_at) {
+    // Reasoning: We want to be able to remove those txs safely from the database later
+    throw Error(
+      `Transaction must have an upper timebound set. Transaction hash: ${signatureRequest.hash}`
     )
   }
+
+  const { rows } = await client.query(sql`
+    INSERT INTO signature_requests
+      ${spreadInsert({
+        ...signatureRequest,
+        hash: signatureRequest.hash.toLowerCase(),
+        created_at: signatureRequest.created_at
+          ? signatureRequest.created_at.toISOString()
+          : undefined,
+        updated_at: signatureRequest.updated_at
+          ? signatureRequest.updated_at.toISOString()
+          : undefined,
+        expires_at: signatureRequest.expires_at
+          ? signatureRequest.expires_at.toISOString()
+          : undefined
+      })}
+      RETURNING *
+  `)
 
   return rows[0] as SignatureRequest
 }
 
-export async function updateSignatureRequestURI(
+export async function failSignatureRequest(
   client: DBClient,
   id: string,
-  signatureRequestURI: string
+  error: SignatureRequestError
 ) {
-  const { rowCount } = await client.query(
-    `
+  await client.query(sql`
     UPDATE signature_requests
-    SET request_uri = $2, updated_at = NOW()
-    WHERE id = $1
-  `,
-    [id, signatureRequestURI]
-  )
+      SET error = ${error}, status = 'failed', updated_at = NOW()
+      WHERE id = ${id}
+  `)
+}
+
+export async function updateSignatureRequestStatus(
+  client: DBClient,
+  id: string,
+  status: "ready" | "submitted"
+) {
+  const { rowCount } = await client.query(sql`
+    UPDATE signature_requests
+      SET status = ${status}, updated_at = NOW()
+      WHERE id = ${id}
+  `)
 
   if (rowCount !== 1) {
-    throw new Error(`Signature request could not be updated, probably not found: ${id}`)
+    throw new Error(`Transaction could not be marked as completed, probably not found: ${id}`)
   }
 }
 
-export async function markSignatureRequestAsCompleted(client: DBClient, id: string) {
-  const { rowCount } = await client.query(
-    `
-    UPDATE signature_requests
-    SET completed_at = NOW(), updated_at = NOW()
-    WHERE id = $1
-  `,
-    [id]
-  )
-
-  if (rowCount !== 1) {
-    throw new Error(`Signature request could not be marked as completed, probably not found: ${id}`)
-  }
-}
-
-export async function querySignatureRequestByHash(client: DBClient, hash: string) {
-  const { rows } = await client.query(`SELECT * FROM signature_requests WHERE hash = $1`, [
-    hash.toLowerCase()
-  ])
-  return rows.length > 0 ? (rows[0] as SignatureRequest) : null
+export async function querySignatureRequestByHash(
+  client: DBClient,
+  hash: string
+): Promise<SignatureRequest | null> {
+  const { rows } = await client.query(sql`
+    SELECT * FROM signature_requests WHERE hash = ${hash.toLowerCase()}
+  `)
+  return rows.length > 0 ? rows[0] : null
 }
 
 export async function querySignatureRequestsBySigner(
@@ -123,24 +133,29 @@ export async function querySignatureRequestsBySigner(
   accountIDs: string[],
   queryOptions: QueryOptions = {}
 ) {
-  const { rows } = await client.query(
-    `
-    SELECT
-      DISTINCT signature_requests.*
-    FROM
-      signature_requests LEFT JOIN signers
-      ON (signature_requests.id = signers.signature_request)
-    WHERE
-      (
-        signers.account_id = ANY($1) OR
-        signature_requests.source_account_id = ANY($1)
-      )
-      AND created_at > $2
-      AND completed_at IS NULL
-    ORDER BY signature_requests.created_at ASC
-    LIMIT $3
-  `,
-    [accountIDs, new Date(queryOptions.cursor || 0), queryOptions.limit || 100]
-  )
+  const requestAtCursor = queryOptions.cursor
+    ? await querySignatureRequestByHash(client, queryOptions.cursor)
+    : null
+
+  if (queryOptions.cursor && !requestAtCursor) {
+    throw Error(`Cannot find a signature request matching the cursor hash: ${queryOptions.cursor}`)
+  }
+
+  const { rows } = await client.query(sql`
+    WITH signature_request_ids AS (
+      SELECT DISTINCT signature_request AS id
+        FROM signers
+        WHERE account_id = ANY(${accountIDs})
+    )
+    SELECT DISTINCT *
+      FROM signature_requests
+      WHERE id IN (SELECT id FROM signature_request_ids)
+        AND created_at > ${
+          requestAtCursor ? requestAtCursor.created_at.toISOString() : "1970-01-01T00:00:00Z"
+        }
+        AND expires_at > NOW()
+      ORDER BY signature_requests.created_at ASC
+      LIMIT ${queryOptions.limit || 100}
+  `)
   return rows as SignatureRequest[]
 }

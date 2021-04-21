@@ -5,7 +5,7 @@
     "lib": ["dom", "es2015", "es2016", "es2017", "es2017.object"],
     "module": "commonjs",
     "resolveJsonModule": true,
-    "target": "ES6",
+    "target": "es2017",
     "strict": true,
     "sourceMap": true,
     "esModuleInterop": true,
